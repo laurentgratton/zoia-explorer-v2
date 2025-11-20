@@ -68,24 +68,54 @@ export default function ModuleDetailsModal() {
              <p className="text-xs text-gray-500 italic">No parameters</p>
            ) : (
              <div className="space-y-2">
-               {module.parameters.map((param, i) => (
-                 <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-8">#{i}</span>
-                    <input 
-                      type="number" 
-                      value={param}
-                      onChange={(e) => {
-                         const val = parseInt(e.target.value, 10);
-                         if (!isNaN(val)) {
-                           const newParams = [...module.parameters];
-                           newParams[i] = val;
-                           updateModuleParams(module.index, newParams);
-                         }
-                      }}
-                      className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white"
-                    />
-                 </div>
-               ))}
+               {module.parameters.map((paramValue, i) => {
+                 const optionDef = definition?.options && i < definition.options.length ? definition.options[i] : null;
+
+                 return (
+                   <div key={i} className="flex items-center gap-2 justify-between">
+                      {optionDef ? (
+                        <>
+                          <label className="text-xs text-gray-400 flex-1">{optionDef.name}</label>
+                          <select
+                            value={paramValue}
+                            onChange={(e) => {
+                               const val = parseInt(e.target.value, 10);
+                               if (!isNaN(val)) {
+                                 const newParams = [...module.parameters];
+                                 newParams[i] = val;
+                                 updateModuleParams(module.index, newParams);
+                               }
+                            }}
+                            className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white w-1/2"
+                          >
+                            {optionDef.values.map((optVal, optIndex) => (
+                              <option key={optIndex} value={optIndex}>
+                                {optVal}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : (
+                        <>
+                           <span className="text-xs text-gray-500 w-8">#{i}</span>
+                           <input 
+                             type="number" 
+                             value={paramValue}
+                             onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val)) {
+                                  const newParams = [...module.parameters];
+                                  newParams[i] = val;
+                                  updateModuleParams(module.index, newParams);
+                                }
+                             }}
+                             className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white"
+                           />
+                        </>
+                      )}
+                   </div>
+                 );
+               })}
              </div>
            )}
         </div>
@@ -104,7 +134,7 @@ export default function ModuleDetailsModal() {
                   const srcTable = patch.pageNames[srcMod?.page || 0];
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-1 rounded border border-gray-700">
-                      <span className="text-gray-400">{srcName}{!!srcTable ? ' | ' + srcTable: ''}</span> (Port {c.sourcePortIndex}) → (Port {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
+                      <span className="text-gray-400">{srcName}{!!srcTable ? ' | ' + srcTable: ''}</span> (Block {c.sourcePortIndex}) → (Block {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
                     </li>
                   );
                })}
@@ -121,7 +151,7 @@ export default function ModuleDetailsModal() {
                   const destTable = patch.pageNames[destMod?.page || 0];
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-1 rounded border border-gray-700">
-                      (Port {c.sourcePortIndex}) → <span className="text-gray-400">{destName}{!!destTable ? ' | ' + destTable : ''}</span> (Port {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
+                      (Block {c.sourcePortIndex}) → <span className="text-gray-400">{destName}{!!destTable ? ' | ' + destTable : ''}</span> (Block {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
                     </li>
                   );
                })}
