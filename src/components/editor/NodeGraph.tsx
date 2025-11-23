@@ -18,6 +18,7 @@ import { getModuleDefinition } from '@/lib/zoia/moduleLib';
 import { usePatchStore } from '@/store/patchStore';
 import { Connection } from '@/lib/zoia/types';
 import ModuleNode, { ModuleNodeData } from './ModuleNode';
+import StarredSection from './StarredSection';
 
 // Define custom node types
 const nodeTypes = {
@@ -253,7 +254,7 @@ export default function NodeGraph() {
   if (!patch) return null;
 
   return (
-    <div className="w-full h-full bg-gray-900">
+    <div className="w-full h-full bg-gray-900 relative overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -271,6 +272,7 @@ export default function NodeGraph() {
         <Background color="#374151" gap={20} />
         <Controls />
       </ReactFlow>
+      <StarredSection />
     </div>
   );
 }

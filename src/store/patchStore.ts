@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Patch, Connection } from '../lib/zoia/types';
+import { Patch, Connection, StarredParameter, StarredConnection } from '../lib/zoia/types';
 
 interface PatchState {
   patch: Patch | null;
@@ -14,8 +14,13 @@ interface PatchState {
   updateModuleParams: (moduleIndex: number, parameters: number[]) => void;
   addConnection: (connection: Connection) => void;
   removeConnection: (sourceMod: number, sourcePort: number, destMod: number, destPort: number) => void;
+  updateConnectionStrength: (connectionIndex: number, strength: number) => void;
   addModule: (typeId: number) => void;
   removeModule: (moduleIndex: number) => void;
+  toggleStarParameter: (moduleIndex: number, blockIndex: number) => void;
+  toggleStarConnection: (connectionIndex: number) => void;
+  setStarredParameterCc: (moduleIndex: number, blockIndex: number, ccValue: number | undefined) => void;
+  setStarredConnectionCc: (connectionIndex: number, ccValue: number | undefined) => void;
 }
 
 export const usePatchStore = create<PatchState>((set) => ({
@@ -53,11 +58,33 @@ export const usePatchStore = create<PatchState>((set) => ({
   }),
   removeConnection: (sourceMod, sourcePort, destMod, destPort) => set((state) => {
     if (!state.patch) return {};
-    const newConnections = state.patch.connections.filter((c) =>
-      !(c.sourceModuleIndex === sourceMod &&
-        c.sourcePortIndex === sourcePort &&
-        c.destModuleIndex === destMod &&
-        c.destPortIndex === destPort)
+    
+    const connectionIndex = state.patch.connections.findIndex((c) =>
+      c.sourceModuleIndex === sourceMod &&
+      c.sourcePortIndex === sourcePort &&
+      c.destModuleIndex === destMod &&
+      c.destPortIndex === destPort
+    );
+
+    if (connectionIndex === -1) return {};
+
+    const newConnections = state.patch.connections.filter((_, i) => i !== connectionIndex);
+
+    let newStarred = state.patch.starredElements || [];
+    newStarred = newStarred.filter(s => !(s.type === 'connection' && s.connectionIndex === connectionIndex));
+    newStarred = newStarred.map(s => {
+      if (s.type === 'connection' && s.connectionIndex > connectionIndex) {
+        return { ...s, connectionIndex: s.connectionIndex - 1 };
+      }
+      return s;
+    });
+
+    return { patch: { ...state.patch, connections: newConnections, starredElements: newStarred } };
+  }),
+  updateConnectionStrength: (connectionIndex, strength) => set((state) => {
+    if (!state.patch) return {};
+    const newConnections = state.patch.connections.map((c, i) =>
+      i === connectionIndex ? { ...c, strength } : c
     );
     return { patch: { ...state.patch, connections: newConnections } };
   }),
@@ -119,5 +146,55 @@ export const usePatchStore = create<PatchState>((set) => ({
       },
       selectedModuleIndex: null
     };
+  }),
+  toggleStarParameter: (moduleIndex, blockIndex) => set((state) => {
+    if (!state.patch) return {};
+    const starred = state.patch.starredElements || [];
+    const existingIndex = starred.findIndex(s => s.type === 'parameter' && s.moduleIndex === moduleIndex && s.blockIndex === blockIndex);
+    
+    let newStarred;
+    if (existingIndex >= 0) {
+      newStarred = starred.filter((_, i) => i !== existingIndex);
+    } else {
+      const newEl: StarredParameter = { type: 'parameter', moduleIndex, blockIndex };
+      newStarred = [...starred, newEl];
+    }
+    return { patch: { ...state.patch, starredElements: newStarred } };
+  }),
+  toggleStarConnection: (connectionIndex) => set((state) => {
+    if (!state.patch) return {};
+    const starred = state.patch.starredElements || [];
+    const existingIndex = starred.findIndex(s => s.type === 'connection' && s.connectionIndex === connectionIndex);
+    
+    let newStarred;
+    if (existingIndex >= 0) {
+      newStarred = starred.filter((_, i) => i !== existingIndex);
+    } else {
+      const newEl: StarredConnection = { type: 'connection', connectionIndex };
+      newStarred = [...starred, newEl];
+    }
+    return { patch: { ...state.patch, starredElements: newStarred } };
+  }),
+  setStarredParameterCc: (moduleIndex, blockIndex, ccValue) => set((state) => {
+    if (!state.patch) return {};
+    const starred = state.patch.starredElements || [];
+    const newStarred = starred.map(s => {
+      if (s.type === 'parameter' && s.moduleIndex === moduleIndex && s.blockIndex === blockIndex) {
+        return { ...s, midiCc: ccValue };
+      }
+      return s;
+    });
+    return { patch: { ...state.patch, starredElements: newStarred } };
+  }),
+  setStarredConnectionCc: (connectionIndex, ccValue) => set((state) => {
+    if (!state.patch) return {};
+    const starred = state.patch.starredElements || [];
+    const newStarred = starred.map(s => {
+      if (s.type === 'connection' && s.connectionIndex === connectionIndex) {
+        return { ...s, midiCc: ccValue };
+      }
+      return s;
+    });
+    return { patch: { ...state.patch, starredElements: newStarred } };
   }),
 }));
