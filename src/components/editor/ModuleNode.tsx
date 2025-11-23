@@ -5,6 +5,7 @@ import { Handle, Position, NodeProps, Node } from '@xyflow/react';
 export interface ModuleNodeData extends Record<string, unknown> {
   label: string;
   typeId: number;
+  type: string;
   inputs: number[];  // List of port indices used as inputs (destinations)
   outputs: number[]; // List of port indices used as outputs (sources)
   color: number;     // Color index
@@ -15,7 +16,7 @@ export type ModuleNode = Node<ModuleNodeData>;
 const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
   return (
     <div 
-      className="px-4 py-2 shadow-md rounded-md border-2 min-w-[150px]"
+      className="px-4 py-2 shadow-md rounded-md border-2 min-w-[120px] max-w-[120px] min-h-[80px] max-h-[80px]"
       style={{
         backgroundColor: '#1f2937', // gray-800
         borderColor: getColorHex(data.color),
@@ -48,7 +49,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
 
           {/* Center Content (placeholder for params or value) */}
           <div className="flex-1 text-center text-xs text-gray-400">
-             ID: {data.typeId}
+             {data.type}
           </div>
 
           {/* Outputs on the Right */}

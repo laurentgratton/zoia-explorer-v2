@@ -24,7 +24,7 @@ const nodeTypes = {
   moduleNode: ModuleNode,
 };
 
-const GRID_SPACING_X = 180;
+const GRID_SPACING_X = 150;
 const GRID_SPACING_Y = 120;
 
 export default function NodeGraph() {
@@ -150,12 +150,13 @@ export default function NodeGraph() {
         id: mod.index.toString(),
         type: 'moduleNode',
         position: { 
-          x: gridX * GRID_SPACING_X + 50, 
-          y: gridY * GRID_SPACING_Y + 50 
+          x: gridX * GRID_SPACING_X + 50,
+          y: gridY * GRID_SPACING_Y + 50
         },
         data: {
           label,
           typeId: mod.typeId,
+          type: getModuleDefinition(mod.typeId)?.name || 'Unknown',
           inputs: Array.from(moduleInputs.get(mod.index) || []).sort((a, b) => a - b),
           outputs: Array.from(moduleOutputs.get(mod.index) || []).sort((a, b) => a - b),
           color: mod.color

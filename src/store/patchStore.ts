@@ -43,7 +43,7 @@ export const usePatchStore = create<PatchState>((set) => ({
   updateModuleParams: (moduleIndex, parameters) => set((state) => {
     if (!state.patch) return {};
     const newModules = state.patch.modules.map((m) =>
-      m.index === moduleIndex ? { ...m, parameters } : m
+      m.index === moduleIndex ? { ...m, options: parameters } : m
     );
     return { patch: { ...state.patch, modules: newModules } };
   }),
@@ -83,9 +83,9 @@ export const usePatchStore = create<PatchState>((set) => ({
       page: state.activePage,
       gridPosition,
       color: 0, 
-      options: [],
+      options: [0,0,0,0,0,0,0,0],
       parameters: [],
-      version: 0
+      version: 1
     };
 
     return {

@@ -3,24 +3,25 @@ import { usePatchStore } from '@/store/patchStore';
 import { getModuleDefinition } from '@/lib/zoia/moduleLib';
 
 export default function ModuleDetailsModal() {
+  const [showDebug, setShowDebug] = React.useState(false);
   const { patch, selectedModuleIndex, setSelectedModuleIndex, updateModuleName, updateModuleParams, removeModule } = usePatchStore();
 
   if (!patch || selectedModuleIndex === null) return null;
 
-  const module = patch.modules.find(m => m.index === selectedModuleIndex);
-  if (!module) return null;
+  const moduleData = patch.modules.find(m => m.index === selectedModuleIndex);
+  if (!moduleData) return null;
 
-  const definition = getModuleDefinition(module.typeId);
+  const definition = getModuleDefinition(moduleData!.typeId);
 
   // Connections
-  const incoming = patch.connections.filter(c => c.destModuleIndex === module.index);
-  const outgoing = patch.connections.filter(c => c.sourceModuleIndex === module.index);
+  const incoming = patch.connections.filter(c => c.destModuleIndex === moduleData!.index);
+  const outgoing = patch.connections.filter(c => c.sourceModuleIndex === moduleData!.index);
 
   const handleClose = () => setSelectedModuleIndex(null);
 
   const handleDelete = () => {
     if (confirm('Are you sure you want to delete this module?')) {
-      removeModule(module.index);
+      removeModule(moduleData!.index);
     }
   };
 
@@ -29,7 +30,7 @@ export default function ModuleDetailsModal() {
       <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl w-[500px] max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
-           <h2 className="text-xl font-bold text-white">{module.name || definition?.name || 'Unknown Module'}</h2>
+           <h2 className="text-xl font-bold text-white">{moduleData!.name || definition?.name || 'Unknown Module'}</h2>
            <div className="flex gap-2 items-center">
              <button 
                onClick={handleDelete}
@@ -43,11 +44,11 @@ export default function ModuleDetailsModal() {
 
         {/* Info */}
         <div className="mb-6 space-y-2 text-sm text-gray-300">
-           <div className="flex justify-between"><span>Type:</span> <span className="text-white">{definition?.name || module.typeId}</span></div>
+           <div className="flex justify-between"><span>Type:</span> <span className="text-white">{definition?.name || moduleData!.typeId}</span></div>
            <div className="flex justify-between"><span>Category:</span> <span className="text-white">{definition?.category || 'N/A'}</span></div>
-           <div className="flex justify-between"><span>ID:</span> <span className="text-white">{module.index}</span></div>
-           <div className="flex justify-between"><span>Page:</span> <span className="text-white">{module.page}</span></div>
-           <div className="flex justify-between"><span>Grid Position:</span> <span className="text-white">{module.gridPosition}</span></div>
+           <div className="flex justify-between"><span>ID:</span> <span className="text-white">{moduleData!.index}</span></div>
+           <div className="flex justify-between"><span>Page:</span> <span className="text-white">{moduleData!.page}</span></div>
+           <div className="flex justify-between"><span>Grid Position:</span> <span className="text-white">{moduleData!.gridPosition}</span></div>
         </div>
 
         {/* Rename */}
@@ -55,20 +56,20 @@ export default function ModuleDetailsModal() {
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
           <input 
             type="text" 
-            value={module.name}
-            onChange={(e) => updateModuleName(module.index, e.target.value)}
+            value={moduleData!.name}
+            onChange={(e) => updateModuleName(moduleData!.index, e.target.value)}
             className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:border-violet-500 focus:outline-none"
           />
         </div>
 
-        {/* Parameters */}
+        {/* Options */}
         <div className="mb-6">
-           <h3 className="text-sm font-bold text-gray-400 uppercase mb-2">Parameters</h3>
-           {module.parameters.length === 0 ? (
-             <p className="text-xs text-gray-500 italic">No parameters</p>
+           <h3 className="text-sm font-bold text-gray-400 uppercase mb-2">Options</h3>
+           {moduleData!.options.length === 0 ? (
+             <p className="text-xs text-gray-500 italic">No options</p>
            ) : (
              <div className="space-y-2">
-               {module.parameters.map((paramValue, i) => {
+               {definition?.options.map((paramValue, i) => {
                  const optionDef = definition?.options && i < definition.options.length ? definition.options[i] : null;
 
                  return (
@@ -77,19 +78,22 @@ export default function ModuleDetailsModal() {
                         <>
                           <label className="text-xs text-gray-400 flex-1">{optionDef.name}</label>
                           <select
-                            value={paramValue}
+                            value={moduleData.options[i]}
                             onChange={(e) => {
                                const val = parseInt(e.target.value, 10);
+                               debugger;
                                if (!isNaN(val)) {
-                                 const newParams = [...module.parameters];
+                                 const newParams = [...moduleData!.options];
                                  newParams[i] = val;
-                                 updateModuleParams(module.index, newParams);
+                                 updateModuleParams(moduleData!.index, newParams);
+                               } else {
+                                 console.log('not a number' + val);
                                }
                             }}
                             className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white w-1/2"
                           >
                             {optionDef.values.map((optVal, optIndex) => (
-                              <option key={optIndex} value={optIndex}>
+                              <option key={optIndex} value={optIndex} selected={optIndex === moduleData.options[i] - 1}>
                                 {optVal}
                               </option>
                             ))}
@@ -100,15 +104,15 @@ export default function ModuleDetailsModal() {
                            <span className="text-xs text-gray-500 w-8">#{i}</span>
                            <input 
                              type="number" 
-                             value={paramValue}
                              onChange={(e) => {
                                 const val = parseInt(e.target.value, 10);
                                 if (!isNaN(val)) {
-                                  const newParams = [...module.parameters];
+                                  const newParams = [...moduleData!.parameters];
                                   newParams[i] = val;
-                                  updateModuleParams(module.index, newParams);
+                                  updateModuleParams(moduleData!.index, newParams);
                                 }
                              }}
+                             value={moduleData.options[i] - 1}
                              className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white"
                            />
                         </>
@@ -118,6 +122,16 @@ export default function ModuleDetailsModal() {
                })}
              </div>
            )}
+        </div>
+
+        {/* Blocks */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-gray-400 uppercase mb-2">Blocks</h3>
+          {definition?.calcBlocks({blocks: definition.blocks, options: moduleData.options}).map((block, i) => (
+              <div key={i} className="flex items-center gap-2 justify-between">
+                <div>{block.name}</div>
+              </div>
+          ))}
         </div>
 
         {/* Connections */}
@@ -134,7 +148,7 @@ export default function ModuleDetailsModal() {
                   const srcTable = patch.pageNames[srcMod?.page || 0];
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-1 rounded border border-gray-700">
-                      <span className="text-gray-400">{srcName}{!!srcTable ? ' | ' + srcTable: ''}</span> (Block {c.sourcePortIndex}) → (Block {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
+                      <span className="text-gray-400">{srcName}{!!srcTable ? ' | ' + srcTable: ''}</span> (Block {c.sourcePortIndex + 1}) → (Block {c.destPortIndex + 1}) <span className="text-gray-500">@{c.strength}</span>
                     </li>
                   );
                })}
@@ -151,14 +165,21 @@ export default function ModuleDetailsModal() {
                   const destTable = patch.pageNames[destMod?.page || 0];
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-1 rounded border border-gray-700">
-                      (Block {c.sourcePortIndex}) → <span className="text-gray-400">{destName}{!!destTable ? ' | ' + destTable : ''}</span> (Block {c.destPortIndex}) <span className="text-gray-500">@{c.strength}</span>
+                      (Block {c.sourcePortIndex + 1}) → <span className="text-gray-400">{destName}{!!destTable ? ' | ' + destTable : ''}</span> (Block {c.destPortIndex + 1}) <span className="text-gray-500">@{c.strength}</span>
                     </li>
                   );
                })}
              </ul>
            </div>
         </div>
-
+        <div className="mb-6">
+          <span className="text-xs text-red-500 font-semibold">Debug <button onClick={() => setShowDebug(!showDebug)}>{showDebug ? "Hide" : "Show"}</button></span>
+          {showDebug && (
+              <div className="mb-2">
+                <p>{JSON.stringify(moduleData)}</p>
+              </div>
+          )}
+        </div>
       </div>
     </div>
   );
