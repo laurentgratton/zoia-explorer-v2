@@ -13,7 +13,8 @@ export default function ModuleDetailsModal() {
     selectedModuleIndex, 
     setSelectedModuleIndex, 
     updateModuleName, 
-    updateModuleParams, 
+    updateModuleParams,
+    updateModuleParameters,
     removeModule,
     addConnection,
     removeConnection,
@@ -176,9 +177,24 @@ export default function ModuleDetailsModal() {
           {blocks.map((block, i) => {
               const starred = isStarredParam(i);
               const ccVal = getStarredParamCc(i);
+              const parameters = blocks.filter(b => b.hasParameter).findIndex(b => b.name === block.name);
+              const parameterIndex = block.hasParameter ? blocks.filter(b => b.hasParameter).findIndex(b => b.name === block.name) : -1;
               return (
               <div key={i} className="flex items-center gap-2 justify-between bg-gray-900/50 p-1 rounded">
                 <div className="text-sm text-white">{block.name}</div>
+                {block.hasParameter && (<div className="flex items-center gap-1">(Bias: {<input
+                    type="range"
+                    min={block.parameterMin || 0}
+                    max={block.parameterMax || 1}
+                    value={moduleData.parameters[parameterIndex]}
+                    onChange={(e) => {
+                      const newNumbers = [...moduleData!.parameters];
+                      newNumbers[parameterIndex] = parseInt(e.target.value);
+                      updateModuleParameters(moduleData!.index, newNumbers);
+                    }}
+                    className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                    title={`Bias`}
+                />})</div>)}
                 <div className="flex items-center gap-2">
                     {starred && (
                         <div className="flex items-center gap-1">

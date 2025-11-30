@@ -12,6 +12,7 @@ interface PatchState {
   updateModulePosition: (moduleIndex: number, gridPosition: number) => void;
   updateModuleName: (moduleIndex: number, name: string) => void;
   updateModuleParams: (moduleIndex: number, parameters: number[]) => void;
+  updateModuleParameters: (moduleIndex: number, parameters: number[]) => void;
   addConnection: (connection: Connection) => void;
   removeConnection: (sourceMod: number, sourcePort: number, destMod: number, destPort: number) => void;
   updateConnectionStrength: (connectionIndex: number, strength: number) => void;
@@ -49,6 +50,13 @@ export const usePatchStore = create<PatchState>((set) => ({
     if (!state.patch) return {};
     const newModules = state.patch.modules.map((m) =>
       m.index === moduleIndex ? { ...m, options: parameters } : m
+    );
+    return { patch: { ...state.patch, modules: newModules } };
+  }),
+  updateModuleParameters: (moduleIndex, parameters) => set((state) => {
+    if (!state.patch) return {};
+    const newModules = state.patch.modules.map((m) =>
+        m.index === moduleIndex ? { ...m, parameters: parameters } : m
     );
     return { patch: { ...state.patch, modules: newModules } };
   }),
