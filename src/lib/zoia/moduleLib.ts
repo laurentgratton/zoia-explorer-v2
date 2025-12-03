@@ -5,6 +5,7 @@ export interface BlockDefinition {
   hasParameter?: boolean;
   parameterMax?: number;
   parameterMin?: number;
+  parameterIndex?: number;
 }
 
 export interface OptionDefinition {
@@ -225,7 +226,7 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
       const blocks = [];
       const vel = d.options[4] === 1;
       const trig = d.options[7] === 1;
-      for(let i = 0; i < d.options[1]; i++){
+      for(let i = 0; i < d.options[1] + 1; i++){
         blocks.push(d.blocks[0]);
         blocks.push(d.blocks[1]);
         if (vel) {
@@ -272,7 +273,7 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
 
       return blocks;
     } },
-  24: { typeId: 24, name: "Multi-Filter", category: "Audio", blocks: [{"name": "audio in", "direction": 0, "type": 0}, {"name": "gain", "direction": 0, "hasParameter": true, "type": 1}, {"name": "frequency", "direction": 0, "hasParameter": true, "type": 1}, {"name": "q", "direction": 0, "hasParameter": true, "type": 1}, {"name": "audio out", "direction": 1, "type": 0}], options: [{"name": "filter shape", "values": ["high pass", "low pass", "band pass", "bell", "hi shelf", "low shelf"]}], minBlocks: 4, maxBlocks: 5, "calcBlocks": (d) => {
+  24: { typeId: 24, name: "Multi-Filter", category: "Audio", blocks: [{"name": "audio in", "direction": 0, "type": 0}, {"name": "gain", "direction": 0, "hasParameter": true, "parameterMax": 65535, "parameterIndex": 1,  "type": 1}, {"name": "frequency", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}, {"name": "q", "direction": 0, "hasParameter": true, "parameterMax": 65535, "parameterIndex": 2, "type": 1}, {"name": "audio out", "direction": 1, "type": 0}], options: [{"name": "filter shape", "values": ["high pass", "low pass", "band pass", "bell", "hi shelf", "low shelf"]}], minBlocks: 4, maxBlocks: 5, "calcBlocks": (d) => {
       const blocks = [d.blocks[0]];
       if(d.options[0] > 2 ) {
         blocks.push(d.blocks[1]);

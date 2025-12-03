@@ -6,7 +6,15 @@ export interface Connection {
   strength: number;
 }
 
+export interface ConnectionLink {
+    source: number;
+    target: number;
+    index?: number;
+    strength?: number;
+}
+
 export interface Module {
+  id: string;
   index: number; // Runtime index in the module list
   typeId: number;
   name: string;

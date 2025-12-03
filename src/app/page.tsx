@@ -42,7 +42,7 @@ export default function Home() {
            <div className="flex-1 flex flex-col">
               <div className="h-12 border-b border-gray-700 flex items-center px-4 justify-between bg-gray-800 gap-4">
                  <div className="flex items-center gap-4 overflow-hidden">
-                    <h2 className="text-white font-bold whitespace-nowrap">{patch.name.replace(/\0/g, '')}</h2>
+                    <h2 className="text-white pl-7 font-bold whitespace-nowrap">{patch.name.replace(/\0/g, '')}</h2>
                     <div className="h-6 w-px bg-gray-600"></div>
                     <PageSelector />
                  </div>

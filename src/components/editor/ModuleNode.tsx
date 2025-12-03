@@ -1,76 +1,116 @@
-import React, { memo } from 'react';
-import { Handle, Position, NodeProps, Node } from '@xyflow/react';
+import React, { memo, useMemo } from 'react';
+import { Position, NodeProps, Node } from '@xyflow/react';
+import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getGridPosition } from '@/lib/zoia/gridUtils';
 
 // Define the data structure for our custom node
 export interface ModuleNodeData extends Record<string, unknown> {
   label: string;
   typeId: number;
   type: string;
-  inputs: number[];  // List of port indices used as inputs (destinations)
-  outputs: number[]; // List of port indices used as outputs (sources)
-  color: number;     // Color index
+  color: number;
+  options: number[];
+  gridX: number;
+  gridY: number;
+  identifier: number;
 }
 
 export type ModuleNode = Node<ModuleNodeData>;
 
+const BLOCK_SIZE = 60;
+const GAP = 8;
+
 const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
-  return (
-    <div 
-      className="px-4 py-2 shadow-md rounded-md border-2 min-w-[120px] max-w-[120px] min-h-[80px] max-h-[80px]"
-      style={{
-        backgroundColor: '#1f2937', // gray-800
-        borderColor: getColorHex(data.color),
-        color: 'white'
-      }}
-    >
-      <div className="flex flex-col">
-        <div className="text-xs font-bold mb-2 text-center uppercase tracking-wider opacity-70">
+  const { typeId, options, gridX, gridY, color, identifier } = data;
+  const def = getModuleDefinition(typeId);
+
+  const blocks = useMemo(() => {
+    if (!def) return [];
+    // Ensure options is array of numbers
+    const safeOptions = options || []; 
+    return def.calcBlocks({ blocks: def.blocks, options: safeOptions });
+  }, [def, options]);
+
+  // Map blocks to positions and handles
+  const blockElements = useMemo(() => {
+    let inputIdx = 0;
+    let outputIdx = 0;
+
+    return blocks.map((block, index) => {
+      // Calculate Grid Position
+      const pos = getGridPosition(gridX, gridY, index);
+      
+      // Calculate Relative Position (pixels)
+      // Relative to the Module Node's origin (which is at gridX, gridY)
+      const relGridX = pos.x - gridX;
+      const relGridY = pos.y - gridY;
+      
+      const left = relGridX * (BLOCK_SIZE + GAP);
+      const top = relGridY * (BLOCK_SIZE + GAP);
+
+      // Determine Handle
+      let handleId = null;
+      let handleType: 'target' | 'source' | null = null;
+      let handlePos = null;
+
+      if (block.direction === 0) { // Input
+        handleId = `${inputIdx++}`;
+        handleType = 'target';
+        handlePos = Position.Left;
+      } else if (block.direction === 1) { // Output
+        handleId = `${outputIdx++}`;
+        handleType = 'source';
+        handlePos = Position.Right;
+      }
+
+      return {
+        ...block,
+        left,
+        top,
+        handleId,
+        handleType,
+        handlePos
+      };
+    });
+  }, [blocks, gridX, gridY]);
+
+  const hexColor = getColorHex(color);
+
+  // Fallback if no blocks are generated (e.g. unknown module type)
+  if (blockElements.length === 0) {
+    return (
+      <div 
+        className={"border border-red-500 bg-red-900/50 flex items-center justify-center text-white text-[8px] " + "module-" + identifier}
+        style={{ width: BLOCK_SIZE, height: BLOCK_SIZE }}
+        title={`Unknown Module Type: ${typeId}`}
+      >
           {data.label}
-        </div>
-        
-        <div className="flex justify-between items-center relative h-full min-h-[40px]">
-          {/* Inputs on the Left */}
-          <div className="flex flex-col space-y-2 absolute -left-3 top-2">
-            {data.inputs.map((portIndex) => (
-              <div key={`in-${portIndex}`} className="relative group">
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id={`${portIndex}`} // The ID matches the port index
-                  className="w-3 h-3 !bg-blue-500 border-2 border-white"
-                />
-                {/* Tooltip for port index */}
-                <span className="absolute left-4 top-0 text-[10px] bg-black px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                  In: {portIndex}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Center Content (placeholder for params or value) */}
-          <div className="flex-1 text-center text-xs text-gray-400">
-             {data.type}
-          </div>
-
-          {/* Outputs on the Right */}
-          <div className="flex flex-col space-y-2 absolute -right-3 top-2">
-            {data.outputs.map((portIndex) => (
-              <div key={`out-${portIndex}`} className="relative group">
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={`${portIndex}`} // The ID matches the port index
-                  className="w-3 h-3 !bg-green-500 border-2 border-white"
-                />
-                 {/* Tooltip for port index */}
-                 <span className="absolute right-4 top-0 text-[10px] bg-black px-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-                  Out: {portIndex}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="relative pointer-events-none">1
+      {blockElements.map((b, i) => (
+        <div
+          key={i}
+          className={"absolute border flex items-center justify-center text-[8px] text-center overflow-hidden select-none pointer-events-auto cursor-pointer hover:brightness-110 shadow-sm module-" + identifier}
+          style={{
+            left: b.left,
+            top: b.top,
+            width: BLOCK_SIZE,
+            height: BLOCK_SIZE,
+            backgroundColor: '#1f2937', // gray-800
+            borderColor: hexColor,
+            borderTopWidth: 3, 
+          }}
+        >
+           {/* Block Content */}
+           <div className="absolute inset-0 text-white opacity-10" style={{ backgroundColor: hexColor }}></div>
+            <span className="relative z-10 text-white leading-tight px-0.5 break-words"></span>
+           <span className="relative z-10 text-white leading-tight px-0.5 break-words">{i === 0 ? data.label + "\n" + b.name : b.name}</span>
+        </div>
+      ))}
     </div>
   );
 };

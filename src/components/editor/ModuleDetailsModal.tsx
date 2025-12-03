@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { usePatchStore } from '@/store/patchStore';
 import { getModuleDefinition } from '@/lib/zoia/moduleLib';
 import ConnectionPickerModal from './ConnectionPickerModal';
-import { Connection } from '@/lib/zoia/types';
 
 export default function ModuleDetailsModal() {
   const [showDebug, setShowDebug] = useState(false);
@@ -177,7 +176,6 @@ export default function ModuleDetailsModal() {
           {blocks.map((block, i) => {
               const starred = isStarredParam(i);
               const ccVal = getStarredParamCc(i);
-              const parameters = blocks.filter(b => b.hasParameter).findIndex(b => b.name === block.name);
               const parameterIndex = block.hasParameter ? blocks.filter(b => b.hasParameter).findIndex(b => b.name === block.name) : -1;
               return (
               <div key={i} className="flex items-center gap-2 justify-between bg-gray-900/50 p-1 rounded">
@@ -186,7 +184,7 @@ export default function ModuleDetailsModal() {
                     type="range"
                     min={block.parameterMin || 0}
                     max={block.parameterMax || 1}
-                    value={moduleData.parameters[parameterIndex]}
+                    value={!!block.parameterIndex ? moduleData.parameters[block.parameterIndex] : moduleData.parameters[parameterIndex]}
                     onChange={(e) => {
                       const newNumbers = [...moduleData!.parameters];
                       newNumbers[parameterIndex] = parseInt(e.target.value);

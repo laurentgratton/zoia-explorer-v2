@@ -30,7 +30,7 @@ export default function StarredSection() {
       {/* Toggle Handle */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="absolute top-4 -left-10 w-10 h-10 bg-gray-800 border-y border-l border-gray-700 rounded-l-md flex items-center justify-center text-yellow-500 hover:text-yellow-400 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)] focus:outline-none"
+        className="absolute top-4 -left-10 w-10 h-10 bg-gray-800 border-y border-l border-gray-700 rounded-l-md flex items-center justify-center text-yellow-500 hover:text-yellow-400 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.1)] focus:outline-none cursor-pointer"
         title={isOpen ? "Close Starred List" : "Open Starred List"}
       >
         <span className="text-lg leading-none">★</span>
