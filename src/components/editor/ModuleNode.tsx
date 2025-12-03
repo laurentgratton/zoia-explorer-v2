@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Handle, Position, NodeProps, Node } from '@xyflow/react';
+import { Position, NodeProps, Node } from '@xyflow/react';
 import { getModuleDefinition } from '@/lib/zoia/moduleLib';
 import { getGridPosition } from '@/lib/zoia/gridUtils';
 
