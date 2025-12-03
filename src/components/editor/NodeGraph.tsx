@@ -19,14 +19,15 @@ import { usePatchStore } from '@/store/patchStore';
 import { Connection } from '@/lib/zoia/types';
 import ModuleNode, { ModuleNodeData } from './ModuleNode';
 import StarredSection from './StarredSection';
+import SignalSection from "@/components/editor/SignalPath";
 
 // Define custom node types
 const nodeTypes = {
   moduleNode: ModuleNode,
 };
 
-const GRID_SPACING_X = 150;
-const GRID_SPACING_Y = 120;
+const GRID_SPACING_X = 68;
+const GRID_SPACING_Y = 68;
 
 export default function NodeGraph() {
   const patch = usePatchStore((state) => state.patch);
@@ -41,7 +42,7 @@ export default function NodeGraph() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+  const onNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node) => {
     const index = parseInt(node.id, 10);
     if (!isNaN(index)) {
         setSelectedModuleIndex(index);
@@ -118,28 +119,11 @@ export default function NodeGraph() {
     const pageModules = patch.modules.filter(m => m.page === activePage);
     const activeModuleIndices = new Set(pageModules.map(m => m.index));
 
-    // 1. Calculate used ports for each module
-    const moduleInputs = new Map<number, Set<number>>();
-    const moduleOutputs = new Map<number, Set<number>>();
-
-    patch.connections.forEach(conn => {
-      // Source is Output
-      if (activeModuleIndices.has(conn.sourceModuleIndex)) {
-        if (!moduleOutputs.has(conn.sourceModuleIndex)) moduleOutputs.set(conn.sourceModuleIndex, new Set());
-        moduleOutputs.get(conn.sourceModuleIndex)?.add(conn.sourcePortIndex);
-      }
-
-      // Dest is Input
-      if (activeModuleIndices.has(conn.destModuleIndex)) {
-        if (!moduleInputs.has(conn.destModuleIndex)) moduleInputs.set(conn.destModuleIndex, new Set());
-        moduleInputs.get(conn.destModuleIndex)?.add(conn.destPortIndex);
-      }
-    });
-
     // 2. Create Nodes
     const newNodes: Node[] = pageModules.map((mod) => {
-      const gridX = mod.gridPosition % 8; // 8 columns
-      const gridY = Math.floor(mod.gridPosition / 8); // 5 rows usually
+      const safeGridPos = typeof mod.gridPosition === 'number' ? mod.gridPosition : 0;
+      const gridX = safeGridPos % 8; // 8 columns
+      const gridY = Math.floor(safeGridPos / 8); // 5 rows usually
       
       const def = getModuleDefinition(mod.typeId);
       // Use custom name if present, otherwise fallback to Definition name, then ID
@@ -158,9 +142,11 @@ export default function NodeGraph() {
           label,
           typeId: mod.typeId,
           type: getModuleDefinition(mod.typeId)?.name || 'Unknown',
-          inputs: Array.from(moduleInputs.get(mod.index) || []).sort((a, b) => a - b),
-          outputs: Array.from(moduleOutputs.get(mod.index) || []).sort((a, b) => a - b),
-          color: mod.color
+          color: mod.color,
+          options: Array.from(mod.options || []), // Ensure it's a standard array
+          gridX,
+          gridY,
+          identifier: mod.index,
         } as ModuleNodeData
       };
     });
@@ -261,7 +247,7 @@ export default function NodeGraph() {
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
-        onNodeClick={onNodeClick}
+        onNodeClick={onNodeDoubleClick}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
         onNodesDelete={onNodesDelete}
@@ -273,6 +259,7 @@ export default function NodeGraph() {
         <Controls />
       </ReactFlow>
       <StarredSection />
+      <SignalSection />
     </div>
   );
 }

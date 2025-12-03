@@ -186,7 +186,7 @@ export default function ModuleDetailsModal() {
                     type="range"
                     min={block.parameterMin || 0}
                     max={block.parameterMax || 1}
-                    value={moduleData.parameters[parameterIndex]}
+                    value={!!block.parameterIndex ? moduleData.parameters[block.parameterIndex] : moduleData.parameters[parameterIndex]}
                     onChange={(e) => {
                       const newNumbers = [...moduleData!.parameters];
                       newNumbers[parameterIndex] = parseInt(e.target.value);

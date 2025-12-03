@@ -93,6 +93,7 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
     }
 
     modules.push({
+      id: 'module-'+i,
       index: i,
       typeId,
       name,

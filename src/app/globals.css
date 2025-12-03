@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.svgContainer {
+    height: 100%;
+    min-height: 80vh;
+}
+
+.node-labels {
+    transform: translate(15px, 5px);
+}
+
+.highlighted {
+    border-style: dashed;
+}
+
+.animateTo {
+    stroke-dashoffset: -100px !important;
+    transition: stroke-dashoffset 3.5s !important;
+    stroke: #5ecf5e !important
+}
+.animateFrom {
+    stroke-dashoffset: -100px !important;
+    transition: stroke-dashoffset 3.5s !important;
+    stroke: #7d7dde !important;
+}
