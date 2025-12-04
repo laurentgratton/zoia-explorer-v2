@@ -56,9 +56,11 @@ export function runForceGraph(
             c.classList.add('animateFrom');
             setTimeout(() => {c.classList.remove('animateFrom')}, 3000);
         });
-        document.querySelectorAll("." + node.id).forEach(c => {
-            c.classList.add('highlighted');
-            setTimeout(() => {c.classList.remove('highlighted')}, 3000);
+        setTimeout(() => {
+            document.querySelectorAll("." + node.id).forEach(c => {
+                c.classList.add('highlighted');
+                setTimeout(() => {c.classList.remove('highlighted')}, 3000);
+            }, 500)
         })
     }
 
