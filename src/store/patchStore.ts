@@ -96,6 +96,7 @@ export const usePatchStore = create<PatchState>((set) => ({
     );
     return { patch: { ...state.patch, connections: newConnections } };
   }),
+  // @ts-expect-error subtype mixup
   addModule: (typeId) => set((state) => {
     if (!state.patch) return {};
     

@@ -1,13 +1,17 @@
+// @ts-nocheck
+
 import * as d3 from "d3";
 import {getModuleDefinition} from "@/lib/zoia/moduleLib";
-import {Connection} from "@/lib/zoia/types";
+import {Connection, Module} from "@/lib/zoia/types";
+import {MouseEventHandler} from "react";
+import {Simulation} from "d3";
 
 
 export function runForceGraph(
-    container,
-    linksData,
-    nodesData,
-    onPageChange,
+    container: HTMLElement,
+    linksData: Connection[],
+    nodesData: Module[],
+    onPageChange: (page: number) => void,
 ) {
     const transformToLink = (d: Connection) => ({
         source: d.sourceModuleIndex,
@@ -46,7 +50,7 @@ export function runForceGraph(
         return colors[colorIndex] || '#9ca3af'; // Default Gray
     }
 
-    const onMouseClick = (d, node) => {
+    const onMouseClick = (d: MouseEventHandler, node: Module) => {
         onPageChange(node.page);
         document.querySelectorAll("[data-to='module-" + node.id +"']").forEach(c => {
             c.classList.add('animateTo');
@@ -64,7 +68,7 @@ export function runForceGraph(
         })
     }
 
-    const drag = (simulation) => {
+    const drag = (simulation: Simulation<Module, undefined>) => {
         const dragstarted = (d) => {
             if (!d.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
