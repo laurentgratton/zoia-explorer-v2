@@ -11,7 +11,8 @@ export default function SignalSection() {
     const [patchId, setPatchId] = useState(patch?.name);
 
     useEffect(() => {
-        if (patch.name !== patchId) {
+        if (patch?.name !== patchId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsOpen(false);
             setPatchId(patch?.name);
             setNodes(patch?.modules || []);

@@ -2,8 +2,9 @@
 import React from "react";
 import { runForceGraph } from "./ForceGraphGenerator";
 import {usePatchStore} from "@/store/patchStore";
+import {Connection, Module} from "@/lib/zoia/types";
 
-export function ForceGraph({ linksData, nodesData }) {
+export function ForceGraph({ linksData, nodesData }: {linksData: Connection[], nodesData: Module[]}) {
     const containerRef = React.useRef(null);
     const setActivePage = usePatchStore((state) => state.setActivePage);
 
