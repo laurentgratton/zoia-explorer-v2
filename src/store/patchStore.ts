@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Patch, Connection, StarredParameter, StarredConnection } from '../lib/zoia/types';
+import { Patch, Connection, StarredParameter, StarredConnection } from '@/lib/zoia/types';
 
 interface PatchState {
   patch: Patch | null;
@@ -22,6 +22,9 @@ interface PatchState {
   toggleStarConnection: (connectionIndex: number) => void;
   setStarredParameterCc: (moduleIndex: number, blockIndex: number, ccValue: number | undefined) => void;
   setStarredConnectionCc: (connectionIndex: number, ccValue: number | undefined) => void;
+  renamePatch: (name: string) => void;
+  renamePage: (pageIndex: number, name: string) => void;
+  addPage: (name: string) => void;
 }
 
 export const usePatchStore = create<PatchState>((set) => ({
@@ -205,5 +208,42 @@ export const usePatchStore = create<PatchState>((set) => ({
       return s;
     });
     return { patch: { ...state.patch, starredElements: newStarred } };
+  }),
+  renamePatch: (name) => set((state) => {
+    if (!state.patch) return {};
+    return { patch: { ...state.patch, name } };
+  }),
+  renamePage: (pageIndex, name) => set((state) => {
+    if (!state.patch) return {};
+    const newPageNames = [...(state.patch.pageNames || [])];
+    // Ensure the array is long enough
+    while (newPageNames.length <= pageIndex) {
+      newPageNames.push("");
+    }
+    newPageNames[pageIndex] = name;
+    return { patch: { ...state.patch, pageNames: newPageNames } };
+  }),
+  addPage: (name) => set((state) => {
+    if (!state.patch) return {};
+    const newPageNames = [...(state.patch.pageNames || [])];
+    if (newPageNames.length >= 62) return {};
+    
+    // If there are gaps in pageNames due to modules being on higher pages than pageNames length
+    const maxModulePage = state.patch.modules.reduce((max, m) => Math.max(max, m.page), 0);
+    const numExistingPages = Math.max(maxModulePage + 1, newPageNames.length);
+    
+    if (numExistingPages >= 62) return {};
+
+    while (newPageNames.length < numExistingPages) {
+        newPageNames.push("");
+    }
+    
+    newPageNames.push(name);
+    const newPageIndex = newPageNames.length - 1;
+    
+    return { 
+        patch: { ...state.patch, pageNames: newPageNames },
+        activePage: newPageIndex
+    };
   }),
 }));
