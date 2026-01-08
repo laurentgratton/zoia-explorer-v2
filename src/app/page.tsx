@@ -7,10 +7,13 @@ import { usePatchStore } from '@/store/patchStore';
 import NodeGraph from '@/components/editor/NodeGraph';
 import PageSelector from '@/components/editor/PageSelector';
 import ModuleDetailsModal from '@/components/editor/ModuleDetailsModal';
+import NamePromptModal from '@/components/editor/NamePromptModal';
 import { serializePatch } from '@/lib/zoia/serializer';
 
 export default function Home() {
   const patch = usePatchStore((state) => state.patch);
+  const renamePatch = usePatchStore((state) => state.renamePatch);
+  const [isRenamingPatch, setIsRenamingPatch] = React.useState(false);
 
   const handleDownload = () => {
     if (!patch) return;
@@ -38,11 +41,27 @@ export default function Home() {
     >
       <div className="w-full h-full flex flex-col bg-gray-900 text-gray-500">
         <ModuleDetailsModal />
+        <NamePromptModal
+          isOpen={isRenamingPatch}
+          title="Rename Patch"
+          initialValue={patch?.name.replace(/\0/g, '') || ''}
+          onConfirm={(newName) => {
+            renamePatch(newName);
+            setIsRenamingPatch(false);
+          }}
+          onCancel={() => setIsRenamingPatch(false)}
+        />
         {patch ? (
            <div className="flex-1 flex flex-col">
               <div className="h-12 border-b border-gray-700 flex items-center px-4 justify-between bg-gray-800 gap-4">
                  <div className="flex items-center gap-4 overflow-hidden">
-                    <h2 className="text-white pl-7 font-bold whitespace-nowrap">{patch.name.replace(/\0/g, '')}</h2>
+                    <h2 
+                      className="text-white pl-7 font-bold whitespace-nowrap cursor-pointer hover:text-violet-400 transition-colors"
+                      onClick={() => setIsRenamingPatch(true)}
+                      title="Click to rename patch"
+                    >
+                      {patch.name.replace(/\0/g, '') || 'Untitled Patch'}
+                    </h2>
                     <div className="h-6 w-px bg-gray-600"></div>
                     <PageSelector />
                  </div>
