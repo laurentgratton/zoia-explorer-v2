@@ -8,12 +8,26 @@ import NodeGraph from '@/components/editor/NodeGraph';
 import PageSelector from '@/components/editor/PageSelector';
 import ModuleDetailsModal from '@/components/editor/ModuleDetailsModal';
 import NamePromptModal from '@/components/editor/NamePromptModal';
+import DisclaimerModal from '@/components/layout/DisclaimerModal';
 import { serializePatch } from '@/lib/zoia/serializer';
 
 export default function Home() {
   const patch = usePatchStore((state) => state.patch);
   const renamePatch = usePatchStore((state) => state.renamePatch);
   const [isRenamingPatch, setIsRenamingPatch] = React.useState(false);
+  const [showDisclaimer, setShowDisclaimer] = React.useState(false);
+
+  React.useEffect(() => {
+    const hasSeenDisclaimer = localStorage.getItem('zoia-disclaimer-seen');
+    if (!hasSeenDisclaimer) {
+      setShowDisclaimer(true);
+    }
+  }, []);
+
+  const handleAcceptDisclaimer = () => {
+    localStorage.setItem('zoia-disclaimer-seen', 'true');
+    setShowDisclaimer(false);
+  };
 
   const handleDownload = () => {
     if (!patch) return;
@@ -40,6 +54,10 @@ export default function Home() {
       }
     >
       <div className="w-full h-full flex flex-col bg-gray-900 text-gray-500">
+        <DisclaimerModal 
+          isOpen={showDisclaimer} 
+          onClose={handleAcceptDisclaimer} 
+        />
         <ModuleDetailsModal />
         <NamePromptModal
           isOpen={isRenamingPatch}
