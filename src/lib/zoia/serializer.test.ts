@@ -8,6 +8,7 @@ describe('Binary Serializer', () => {
       name: "RoundTrip",
       modules: [
         {
+          id: '0',
           index: 0,
           typeId: 10,
           name: "ModA",
@@ -61,6 +62,7 @@ describe('Binary Serializer', () => {
       const patch: Patch = {
           name: "ColorTest",
           modules: [{
+              id: '0',
               index: 0, typeId: 0, name: "OrangeMod", page: 0, gridPosition: 0,
               color: 8, // Orange (Extended)
               options: [], parameters: [], version: 1

@@ -47,7 +47,7 @@ describe('patchStore', () => {
   it('should handle adding a page when there are gaps', () => {
       const gapPatch: Patch = {
           ...mockPatch,
-          modules: [{ index: 0, typeId: 1, name: 'M1', page: 5, gridPosition: 0, color: 0, options: [], parameters: [] }],
+          modules: [{ id: '0', index: 0, typeId: 1, name: 'M1', page: 5, gridPosition: 0, color: 0, options: [], parameters: [] }],
           pageNames: ['P0']
       };
       usePatchStore.getState().setPatch(gapPatch);
