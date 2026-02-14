@@ -19,19 +19,48 @@ import { usePatchStore } from '@/store/patchStore';
 import { Connection } from '@/lib/zoia/types';
 import ModuleNode, { ModuleNodeData } from './ModuleNode';
 import StarredSection from './StarredSection';
+import GridBorderNode from './GridBorderNode';
 import SignalSection from "@/components/editor/SignalPath";
 
 // Define custom node types
 const nodeTypes = {
   moduleNode: ModuleNode,
+  gridBorder: GridBorderNode,
 };
 
 const GRID_SPACING_X = 68;
 const GRID_SPACING_Y = 68;
 
+const SYSTEM_COORDINATES: Record<number, {x: number, y: number}> = {
+  // Right Column
+  93: { x: 9, y: -1 }, // Euro Audio In 1
+  94: { x: 9, y: 0 }, // Euro Audio In 2
+  95: { x: 9, y: 1 }, // Euro Audio Out 1
+  96: { x: 9, y: 2 }, // Euro Audio Out 2
+  92: { x: 9, y: 3 }, // Euro Headphone Amp
+  
+  // Bottom Row - CV In (Cols 0-3)
+  88: { x: 0, y: 6 }, // Euro CV In 1
+  89: { x: 1, y: 6 }, // Euro CV In 2
+  90: { x: 2, y: 6 }, // Euro CV In 3
+  91: { x: 3, y: 6 }, // Euro CV In 4
+  
+  // Bottom Row - CV Out (Cols 4-7)
+  99: { x: 4, y: 6 }, // Euro CV Out 1
+  100: { x: 5, y: 6 }, // Euro CV Out 2
+  101: { x: 6, y: 6 }, // Euro CV Out 3
+  87: { x: 7, y: 6 }, // Euro CV Out 4
+
+  // Bottom Left
+  97: { x: -3, y: 7 }, // Euro Pushbutton 1
+  98: { x: -2, y: 7 }, // Euro Pushbutton 2
+};
+
 export default function NodeGraph() {
   const patch = usePatchStore((state) => state.patch);
   const activePage = usePatchStore((state) => state.activePage);
+  const showSystemModules = usePatchStore((state) => state.showSystemModules);
+  const toggleSystemModules = usePatchStore((state) => state.toggleSystemModules);
   const updateModulePosition = usePatchStore((state) => state.updateModulePosition);
   const setSelectedModuleIndex = usePatchStore((state) => state.setSelectedModuleIndex);
   const addConnection = usePatchStore((state) => state.addConnection);
@@ -115,15 +144,32 @@ export default function NodeGraph() {
       return;
     }
 
-    // Filter modules for current page
-    const pageModules = patch.modules.filter(m => m.page === activePage);
-    const activeModuleIndices = new Set(pageModules.map(m => m.index));
+    const isSystemModule = (typeId: number) => {
+        return Object.prototype.hasOwnProperty.call(SYSTEM_COORDINATES, typeId);
+    };
+
+    const visibleModules = patch.modules.filter(m => {
+        if (showSystemModules && isSystemModule(m.typeId)) return true;
+        // Normal modules on active page, excluding system modules
+        return m.page === activePage && !isSystemModule(m.typeId);
+    });
+
+    const activeModuleIndices = new Set(visibleModules.map(m => m.index));
 
     // 2. Create Nodes
-    const newNodes: Node[] = pageModules.map((mod) => {
-      const safeGridPos = typeof mod.gridPosition === 'number' ? mod.gridPosition : 0;
-      const gridX = safeGridPos % 8; // 8 columns
-      const gridY = Math.floor(safeGridPos / 8); // 5 rows usually
+    const newNodes: Node[] = visibleModules.map((mod) => {
+      let gridX, gridY, draggable;
+      
+      if (SYSTEM_COORDINATES[mod.typeId]) {
+         gridX = SYSTEM_COORDINATES[mod.typeId].x;
+         gridY = SYSTEM_COORDINATES[mod.typeId].y;
+         draggable = false;
+      } else {
+         const safeGridPos = mod.gridPosition;
+         gridX = safeGridPos % 8; 
+         gridY = Math.floor(safeGridPos / 8); 
+         draggable = true;
+      }
       
       const def = getModuleDefinition(mod.typeId);
       // Use custom name if present, otherwise fallback to Definition name, then ID
@@ -134,6 +180,7 @@ export default function NodeGraph() {
       return {
         id: mod.index.toString(),
         type: 'moduleNode',
+        draggable,
         position: { 
           x: gridX * GRID_SPACING_X + 50,
           y: gridY * GRID_SPACING_Y + 50
@@ -151,7 +198,17 @@ export default function NodeGraph() {
       };
     });
 
-    // 3. Create Edges (only if BOTH nodes are on active page)
+    // Add Grid Border Node
+     newNodes.unshift({
+         id: 'grid-border',
+         type: 'gridBorder',
+         position: { x: 50, y: 50 },
+         draggable: false,
+         selectable: false,
+         data: { label: '' }
+     });
+
+    // 3. Create Edges (only if BOTH nodes are visible)
     const newEdges: Edge[] = patch.connections
       .filter(conn => activeModuleIndices.has(conn.sourceModuleIndex) && activeModuleIndices.has(conn.destModuleIndex))
       .map((conn) => {
@@ -170,7 +227,7 @@ export default function NodeGraph() {
     setNodes(newNodes);
     setEdges(newEdges);
 
-  }, [patch, activePage, setNodes, setEdges]);
+  }, [patch, activePage, showSystemModules, setNodes, setEdges]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => onNodesChange(changes),
@@ -258,6 +315,24 @@ export default function NodeGraph() {
         <Background color="#374151" gap={20} />
         <Controls />
       </ReactFlow>
+
+      <div className="absolute bottom-4 left-4 z-10">
+        <button
+          aria-label="Toggle Euroburo Modules"
+          title="Toggle Euroburo Modules"
+          onClick={toggleSystemModules}
+          className={`p-2 rounded-full shadow-lg transition-colors ${
+            showSystemModules ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+        </button>
+      </div>
+
       <StarredSection />
       <SignalSection />
     </div>

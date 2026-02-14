@@ -38,7 +38,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
 
     return blocks.map((block, index) => {
       // Calculate Grid Position
-      const pos = getGridPosition(gridX, gridY, index);
+      const pos = getGridPosition(gridX, gridY, index, def?.category === 'System');
       
       // Calculate Relative Position (pixels)
       // Relative to the Module Node's origin (which is at gridX, gridY)
@@ -72,7 +72,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
         handlePos
       };
     });
-  }, [blocks, gridX, gridY]);
+  }, [blocks, gridX, gridY, def?.category]);
 
   const hexColor = getColorHex(color);
 
@@ -90,7 +90,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
   }
 
   return (
-    <div className="relative pointer-events-none">1
+    <div className="relative pointer-events-none">&nbsp;
       {blockElements.map((b, i) => (
         <div
           key={i}
@@ -107,8 +107,8 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
         >
            {/* Block Content */}
            <div className="absolute inset-0 text-white opacity-10" style={{ backgroundColor: hexColor }}></div>
-            <span className="relative z-10 text-white leading-tight px-0.5 break-words"></span>
-           <span className="relative z-10 text-white leading-tight px-0.5 break-words">{i === 0 ? data.label + "\n" + b.name : b.name}</span>
+            <span className="relative z-10 text-white leading-tight px-0.5 wrap-break-word"></span>
+           <span className="relative z-10 text-white leading-tight px-0.5 wrap-break-word">{i === 0 ? data.label + "\n" + b.name : b.name}</span>
         </div>
       ))}
     </div>

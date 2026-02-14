@@ -4,9 +4,11 @@ import { Patch, Connection, StarredParameter, StarredConnection } from '@/lib/zo
 interface PatchState {
   patch: Patch | null;
   activePage: number;
+  showSystemModules: boolean;
   selectedModuleIndex: number | null;
   setPatch: (patch: Patch) => void;
   setActivePage: (page: number) => void;
+  toggleSystemModules: () => void;
   setSelectedModuleIndex: (index: number | null) => void;
   clearPatch: () => void;
   updateModulePosition: (moduleIndex: number, gridPosition: number) => void;
@@ -30,9 +32,11 @@ interface PatchState {
 export const usePatchStore = create<PatchState>((set) => ({
   patch: null,
   activePage: 0,
+  showSystemModules: false,
   selectedModuleIndex: null,
   setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null }),
   setActivePage: (page) => set({ activePage: page }),
+  toggleSystemModules: () => set((state) => ({ showSystemModules: !state.showSystemModules })),
   setSelectedModuleIndex: (index) => set({ selectedModuleIndex: index }),
   clearPatch: () => set({ patch: null, activePage: 0, selectedModuleIndex: null }),
   updateModulePosition: (moduleIndex, gridPosition) => set((state) => {
