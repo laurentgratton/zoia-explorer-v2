@@ -26,7 +26,6 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
 
   const blocks = useMemo(() => {
     if (!def) return [];
-    // Ensure options is array of numbers
     const safeOptions = options || []; 
     return def.calcBlocks({ blocks: def.blocks, options: safeOptions });
   }, [def, options]);
@@ -76,7 +75,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
 
   const hexColor = getColorHex(color);
 
-  // Fallback if no blocks are generated (e.g. unknown module type)
+  // Fallback if no blocks are generated (e.g., unknown module type)
   if (blockElements.length === 0) {
     return (
       <div 
@@ -117,7 +116,7 @@ const ModuleNode = ({ data }: NodeProps<ModuleNode>) => {
 
 // Helper to map Zoia color indices to Hex codes (approximate)
 function getColorHex(colorIndex: number): string {
-  // Based on Binary Format.md (old colors 0-7, extended 8+)
+  // Based on Binary Format.md (old colors 0-7, extended 8+).
   // We'll just map the basic ones for now or a default.
   const colors: Record<number, string> = {
     0: '#6b7280', // Unknown (Gray)

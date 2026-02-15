@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Patch, Connection, StarredParameter, StarredConnection } from '@/lib/zoia/types';
+import {Patch, Connection, StarredParameter, StarredConnection} from '@/lib/zoia/types';
+import {hasEuroModules} from "@/lib/zoia/moduleLib";
 
 interface PatchState {
   patch: Patch | null;
@@ -36,7 +37,7 @@ export const usePatchStore = create<PatchState>((set) => ({
   selectedModuleIndex: null,
   setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null }),
   setActivePage: (page) => set({ activePage: page }),
-  toggleSystemModules: () => set((state) => ({ showSystemModules: !state.showSystemModules })),
+  toggleSystemModules: () => set((state) => ({ showSystemModules: hasEuroModules(state?.patch?.modules) ? !state.showSystemModules : false })),
   setSelectedModuleIndex: (index) => set({ selectedModuleIndex: index }),
   clearPatch: () => set({ patch: null, activePage: 0, selectedModuleIndex: null }),
   updateModulePosition: (moduleIndex, gridPosition) => set((state) => {

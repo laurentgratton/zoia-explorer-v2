@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import {getModuleDefinition, hasEuroModules} from '@/lib/zoia/moduleLib';
 import { usePatchStore } from '@/store/patchStore';
 import { Connection } from '@/lib/zoia/types';
 import ModuleNode, { ModuleNodeData } from './ModuleNode';
@@ -316,22 +316,18 @@ export default function NodeGraph() {
         <Controls />
       </ReactFlow>
 
-      <div className="absolute bottom-4 left-4 z-10">
+      { hasEuroModules(patch.modules) && <div className="absolute bottom-4 left-4 z-10">
         <button
           aria-label="Toggle Euroburo Modules"
           title="Toggle Euroburo Modules"
           onClick={toggleSystemModules}
-          className={`p-2 rounded-full shadow-lg transition-colors ${
+          className={`p-2 rounded-full font-bold shadow-lg ml-8 transition-colors ${
             showSystemModules ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="3" y1="9" x2="21" y2="9"></line>
-            <line x1="9" y1="21" x2="9" y2="9"></line>
-          </svg>
+          EURO
         </button>
-      </div>
+      </div> }
 
       <StarredSection />
       <SignalSection />
