@@ -59,4 +59,12 @@ describe('patchStore', () => {
       expect(state.patch?.pageNames[6]).toBe('P6');
       expect(state.activePage).toBe(6);
   });
+
+  it('should toggle system modules visibility', () => {
+    expect(usePatchStore.getState().showSystemModules).toBe(false);
+    usePatchStore.getState().toggleSystemModules();
+    expect(usePatchStore.getState().showSystemModules).toBe(true);
+    usePatchStore.getState().toggleSystemModules();
+    expect(usePatchStore.getState().showSystemModules).toBe(false);
+  });
 });
