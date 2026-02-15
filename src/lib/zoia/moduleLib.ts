@@ -399,7 +399,7 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
     } },
   38: { typeId: 38, name: "Noise", category: "Audio", blocks: [{"name": "audio out", "direction": 1, "type": 0}], options: [], minBlocks: 1, maxBlocks: 1, "calcBlocks": (d) => {return d.blocks} },
   39: { typeId: 39, name: "Random", category: "Control", blocks: [{"name": "trigger in", "direction": 0, "hasParameter": true, "parameterIndex": 0, "type": 1}, {"name": "CV output", "direction": 1, "type": 1}], options: [{"name": "output", "values": ["0 to 1", "-1 to 1"]}, {"name": "new val on trig", "values": ["on", "off"]}], minBlocks: 1, maxBlocks: 2, "calcBlocks": (d) => {
-      let blocks = [];
+      let blocks;
       if(d.options[1] === 0){
         blocks = d.blocks;
       } else {
@@ -498,7 +498,7 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
   51: { typeId: 51, name: "CV Rectify", category: "Control", blocks: [{"name": "CV input", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}, {"name": "CV output", "direction": 1, "type": 1}], options: [], minBlocks: 2, maxBlocks: 2, "calcBlocks": (d) => {return d.blocks} },
   52: { typeId: 52, name: "Trigger", category: "Control", blocks: [{"name": "CV input", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}, {"name": "CV output", "direction": 1, "type": 1}], options: [], minBlocks: 2, maxBlocks: 2, "calcBlocks": (d) => {return d.blocks} },
   53: { typeId: 53, name: "Stereo Spread", category: "Audio", blocks: [{"name": "audio in", "direction": 0, "type": 0}, {"name": "audio in 1", "direction": 0, "type": 0}, {"name": "audio in 2", "direction": 0, "type": 0}, {"name": "delay time", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 0}, {"name": "side gain", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535,"type": 0}, {"name": "audio out 1", "direction": 1, "type": 0}, {"name": "audio out 2", "direction": 1, "type": 0}], options: [{"name": "method", "values": ["Mid-Side", "Haas"]}], minBlocks: 4, maxBlocks: 5, "calcBlocks": (d) => {
-      let blocks = [];
+      let blocks;
       if(d.options[0] === 0) {
         blocks = [d.blocks[0], d.blocks[3], d.blocks[5], d.blocks[6]]
       } else {
@@ -541,7 +541,7 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
   62: { typeId: 62, name: "Midi PC Out", category: "Interface", blocks: [{"name": "pc out", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}, {"name": "trigger in", "direction": 0, "hasParameter": true, "parameterIndex": 1, "type": 1}], options: [{"name": "midi channel", "values": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]}], minBlocks: 2, maxBlocks: 2, "calcBlocks": (d) => { return d.blocks } },
   63: { typeId: 63, name: "Bit Modulator", category: "Audio", blocks: [{"name": "audio in 1", "direction": 0, "type": 0}, {"name": "audio in 2", "direction": 0, "type": 0}, {"name": "audio out", "direction": 1, "type": 0}], options: [{"name": "type", "values": ["xor", "and", "or", ""]}], minBlocks: 3, maxBlocks: 3, "calcBlocks": (d) => { return d.blocks } },
   64: { typeId: 64, name: "Audio Balance", category: "Audio", blocks: [{"name": "audio in1", "direction": 0, "type": 0}, {"name": "audio in2", "direction": 0, "type": 0}, {"name": "audio in1 L", "direction": 0, "type": 0}, {"name": "audio in1 R", "direction": 0, "type": 0}, {"name": "audio in2 L", "direction": 0, "type": 0}, {"name": "audio in2 R", "direction": 0, "type": 0}, {"name": "mix", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}, {"name": "audio out1", "direction": 1, "type": 0}, {"name": "audio outL", "direction": 1, "type": 0}, {"name": "audio outR", "direction": 1, "type": 0}], options: [{"name": "output", "values": ["mono", "stereo"]}], minBlocks: 4, maxBlocks: 7, "calcBlocks": (d) => {
-      let blocks = [];
+      let blocks;
       if(d.options[0] === 0){
         blocks = [d.blocks[0], d.blocks[1], d.blocks[6], d.blocks[7]]
       } else {
