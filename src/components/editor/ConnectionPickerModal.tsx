@@ -76,7 +76,7 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
         sourcePortIndex: remoteBlockIndex,
         destModuleIndex: sourceModule.index,
         destPortIndex: selectedLocalBlockIndex,
-        strength: 100 // Default strength
+        strength: 10000 // Default strength
       };
     } else {
       // Source = Local, Dest = Remote
@@ -93,7 +93,7 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
 
   if (localBlocks.length === 0) {
       return (
-         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={onClose}>
+         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60" onClick={onClose}>
              <div className="bg-gray-800 p-6 rounded shadow-lg text-white">
                  No compatible ports found on this module.
              </div>
@@ -102,7 +102,7 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60" onClick={onClose}>
       <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-white mb-4">
             Add Connection ({direction === 'input' ? 'Input' : 'Output'})
