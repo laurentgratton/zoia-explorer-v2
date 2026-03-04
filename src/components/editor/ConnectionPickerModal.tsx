@@ -85,7 +85,7 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
         sourcePortIndex: selectedLocalBlockIndex,
         destModuleIndex: remoteModule.index,
         destPortIndex: remoteBlockIndex,
-        strength: 100
+        strength: 10000
       };
     }
     onSelect(connection);
