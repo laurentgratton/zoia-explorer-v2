@@ -69,20 +69,19 @@ export function runForceGraph(
     }
 
     const drag = (simulation: Simulation<Module, undefined>) => {
-        const dragstarted = (d) => {
-            if (!d.active) simulation.alphaTarget(0.3).restart();
+        const dragstarted = (event, d) => {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
             d.fy = d.y;
         };
 
-        const dragged = (d) => {
-            if (!d.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
+        const dragged = (event, d) => {
+            d.fx = event.x;
+            d.fy = event.y;
         };
 
-        const dragended = (d) => {
-            if (!d.active) simulation.alphaTarget(0);
+        const dragended = (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
             d.fx = null;
             d.fy = null;
         };
