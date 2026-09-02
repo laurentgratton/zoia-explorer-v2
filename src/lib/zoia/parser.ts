@@ -6,9 +6,13 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
 
   // --- 1. Header ---
   // 0: Patch Size (u32) - in 4-byte chunks
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const patchSizeChunks = view.getUint32(offset, true);
   offset += 4;
+  const patchEndOffset = patchSizeChunks * 4;
+
+  if (patchEndOffset < 24 || patchEndOffset > buffer.byteLength) {
+    throw new Error('Invalid patch size');
+  }
   
   // 4: Patch Name (16 bytes)
   const patchName = parseString(view, offset, 16);
@@ -25,12 +29,17 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
     
     const moduleSizeChunks = view.getUint32(offset, true);
     const moduleSizeBytes = moduleSizeChunks * 4;
+    const moduleEndOffset = moduleStartOffset + moduleSizeBytes;
+
+    if (moduleSizeBytes < 40 || moduleEndOffset > patchEndOffset) {
+      throw new Error(`Invalid size for module ${i}`);
+    }
     offset += 4;
 
     const typeId = view.getUint32(offset, true);
     offset += 4;
 
-    // Unknown
+    const version = view.getUint32(offset, true);
     offset += 4;
 
     const page = view.getUint32(offset, true);
@@ -42,11 +51,11 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
     const gridPosition = view.getUint32(offset, true);
     offset += 4;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const numUserParams = view.getUint32(offset, true); 
+    const numUserParams = view.getUint32(offset, true);
     offset += 4;
 
-    const version = view.getUint32(offset, true);
+    const savedDataSize = view.getUint32(offset, true);
+    const savedDataStorageSize = Math.ceil(savedDataSize / 4) * 4;
     offset += 4;
 
     // Options (8 bytes)
@@ -56,40 +65,32 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
       offset += 1;
     }
 
-    // Additional Options & Name Logic
-    const currentRelPos = offset - moduleStartOffset; // Should be 40
-    const remainingBytes = moduleSizeBytes - currentRelPos;
-    
-    let hasName = false;
-    let name = "";
-    
-    if (remainingBytes >= 16) {
-      // Check last 16 bytes for text-like content
-      const possibleNameOffset = moduleStartOffset + moduleSizeBytes - 16;
-      if (isValidName(view, possibleNameOffset, 16)) {
-         hasName = true;
-         name = parseString(view, possibleNameOffset, 16);
-      }
+    const parametersEndOffset = offset + numUserParams * 4;
+    const savedDataEndOffset = parametersEndOffset + savedDataStorageSize;
+
+    if (savedDataEndOffset > moduleEndOffset) {
+      throw new Error(`Invalid parameter or saved-data size for module ${i}`);
     }
 
-    const paramsEndOffset = moduleStartOffset + moduleSizeBytes - (hasName ? 16 : 0);
-    const paramsBytes = paramsEndOffset - offset;
-    const numParams = paramsBytes / 4; // Should be u32s
-
     const parameters: number[] = [];
-    for (let k = 0; k < numParams; k++) {
+    for (let k = 0; k < numUserParams; k++) {
       parameters.push(view.getUint32(offset, true));
       offset += 4;
     }
 
-    if (hasName) {
-      offset += 16; // Skip name as we read it
+    const savedData: number[] = [];
+    for (let k = 0; k < savedDataStorageSize; k++) {
+      savedData.push(view.getUint8(offset));
+      offset += 1;
     }
 
-    // Safety check to ensure we align with the next module
-    if (offset !== moduleStartOffset + moduleSizeBytes) {
-        // If we miscalculated, force jump to expected end
-        offset = moduleStartOffset + moduleSizeBytes;
+    const remainingBytes = moduleEndOffset - offset;
+    let name = "";
+    if (remainingBytes === 16) {
+      name = parseString(view, offset, 16);
+      offset += 16;
+    } else if (remainingBytes !== 0) {
+      throw new Error(`Invalid trailing data for module ${i}`);
     }
 
     modules.push({
@@ -102,6 +103,8 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
       color: oldColor,
       options,
       parameters,
+      savedData,
+      savedDataSize,
       version
     });
   }
@@ -134,12 +137,12 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
 
   // --- 4. Page Names ---
   const pageNames: string[] = [];
-  if (offset + 4 <= buffer.byteLength) {
+  if (offset + 4 <= patchEndOffset) {
      const numPageNames = view.getUint32(offset, true);
      offset += 4;
      
      for (let i = 0; i < numPageNames; i++) {
-       if (offset + 16 > buffer.byteLength) break;
+       if (offset + 16 > patchEndOffset) break;
        pageNames.push(parseString(view, offset, 16));
        offset += 16;
      }
@@ -147,11 +150,12 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
 
   // --- 5. Starred Elements ---
   const starredElements: import('./types').StarredElement[] = [];
-  if (offset + 4 <= buffer.byteLength) {
+  if (offset + 4 <= patchEndOffset) {
      const numStarred = view.getUint32(offset, true);
      offset += 4;
 
      for (let i = 0; i < numStarred; i++) {
+       if (offset + 4 > patchEndOffset) break;
        let raw = view.getUint32(offset, true);
        offset += 4;
 
@@ -198,7 +202,7 @@ export function parsePatch(buffer: ArrayBuffer): Patch {
   // --- 6. Modules Colors (Optional) ---
   // Check if there is remaining data for colors. We expect numModules * 4 bytes.
   const expectedColorBytes = numModules * 4;
-  if (offset + expectedColorBytes <= buffer.byteLength) {
+  if (offset + expectedColorBytes <= patchEndOffset) {
     for (let i = 0; i < numModules; i++) {
       const extendedColor = view.getUint32(offset, true);
       offset += 4;
@@ -225,18 +229,4 @@ function parseString(view: DataView, offset: number, length: number): string {
     str += String.fromCharCode(charCode);
   }
   return str;
-}
-
-function isValidName(view: DataView, offset: number, length: number): boolean {
-  for (let i = 0; i < length; i++) {
-    const c = view.getUint8(offset + i);
-    if (c === 0) continue; // Null is fine (padding)
-    // a-z (0x61 – 0x7A), A-Z (0x41 – 0x5A), 0-9 (0x30 – 0x39), space (0x20), dash (0x2D), dot (0x2E)
-    const valid = (c >= 0x61 && c <= 0x7A) ||
-                  (c >= 0x41 && c <= 0x5A) ||
-                  (c >= 0x30 && c <= 0x39) ||
-                  c === 0x20 || c === 0x2D || c === 0x2E;
-    if (!valid) return false;
-  }
-  return true;
 }

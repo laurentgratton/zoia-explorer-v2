@@ -26,21 +26,28 @@ describe('Binary Parser', () => {
     offset += 4;
     view.setUint32(offset, 42, true); // Type ID
     offset += 4;
-    offset += 4; // Unknown
+    view.setUint32(offset, 5, true); // Module version
+    offset += 4;
     view.setUint32(offset, 1, true); // Page
     offset += 4;
     view.setUint32(offset, 2, true); // Color
     offset += 4;
     view.setUint32(offset, 10, true); // Grid Pos
     offset += 4;
-    view.setUint32(offset, 0, true); // Num params
+    view.setUint32(offset, 2, true); // Num params
     offset += 4;
-    view.setUint32(offset, 5, true); // Version
+    view.setUint32(offset, 4, true); // Saved-data size
     offset += 4;
     // Options (8 bytes)
     for(let i=0; i<8; i++) view.setUint8(offset+i, i);
     offset += 8;
-    // Params (0)
+    // Params
+    view.setUint32(offset, 123, true);
+    offset += 4;
+    view.setUint32(offset, 456, true);
+    offset += 4;
+    // Module-owned save data
+    [9, 8, 7, 6].forEach(value => view.setUint8(offset++, value));
     // Name "MyModule"
     const modName = "MyModule";
     for(let i=0; i<16; i++) view.setUint8(offset+i, i < modName.length ? modName.charCodeAt(i) : 0);
@@ -71,6 +78,9 @@ describe('Binary Parser', () => {
     expect(patch.modules[0].page).toBe(1);
     expect(patch.modules[0].gridPosition).toBe(10);
     expect(patch.modules[0].options[0]).toBe(0);
+    expect(patch.modules[0].parameters).toEqual([123, 456]);
+    expect(patch.modules[0].savedData).toEqual([9, 8, 7, 6]);
+    expect(patch.modules[0].savedDataSize).toBe(4);
     expect(patch.modules[0].version).toBe(5);
   });
 
@@ -95,7 +105,8 @@ describe('Binary Parser', () => {
     offset += 4;
     view.setUint32(offset, 10, true); // Type ID
     offset += 4;
-    offset += 4; // Unknown
+    view.setUint32(offset, 1, true); // Module version
+    offset += 4;
     view.setUint32(offset, 0, true); // Page
     offset += 4;
     view.setUint32(offset, 3, true); // Old Color (Red) - Should be overridden by extended color
@@ -104,7 +115,7 @@ describe('Binary Parser', () => {
     offset += 4;
     view.setUint32(offset, 0, true); // Num Params
     offset += 4;
-    view.setUint32(offset, 1, true); // Version
+    view.setUint32(offset, 0, true); // Saved-data size
     offset += 4;
     offset += 8; // Options
     offset += 16; // Name placeholder

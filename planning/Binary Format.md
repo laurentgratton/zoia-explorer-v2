@@ -17,7 +17,8 @@ Applicability
 There are no guarantees that the information contained in this document is exact. We tried to verify it to the
 best or our abilities but we make no promises.
 
-The information herein has been verified against version 2.50 and 2.70 of ZOIA's firmware.
+The original information herein was verified against versions 2.50 and 2.70 of ZOIA's firmware. The module
+record layout below was updated using firmware 5.41 and the official firmware 5 factory patches.
 See the appendix for the revision history of this document.
 
 Also pay attention to the limitation mentioned in the ZOIA Specifics section below concerning module types
@@ -192,9 +193,9 @@ number of 4 bytes «chunks», including of itself. Multiply this
 value by 4 to get the total number of bytes.
 4 4 Module Type ID Unsigned long integer – the module type ID. See appendix A
 for more details.
-8 4 unknown Unsigned long integer – this field has a value of zero 99% of
-the time. Otherwise, a value 1 has been observed from time
-to time. More work is required here.
+8 4 Module Version Unsigned long integer – this would be more appropriately
+called a «module type version». It identifies the module's block
+configuration version.
 12 4 Page number Unsigned long integer – the page number where the module is
 located. Starts at zero for the first page.
 16 4 Old Color Unsigned long integer – the old color number that would be
@@ -209,16 +210,11 @@ module cell (led) on the page. It's a number from 0 to 39.
 From left to right, the first row are numbers 0 - 7, second row
 are 8 - 15, etc.
 24 4 Number of User
-Parameters
-Unsigned long integer – ?? What exactly we mean by «user»
-?? Most of the times (but not always) this is the number of
-values in the [Additional Options] field.
-28 4 Module Version Unsigned long integer – This would be more appropriately
-called a «module type version». It refers to a specific version
-of a module type that was current in the ZOIA when the patch
-was saved. The module type configuration (options, blocks
-numbers, ...) relating to that version must be known in order
-to decode that module's data correctly.
+Parameters Unsigned long integer – the number of 32-bit values in the
+[User Parameters] field.
+28 4 Size of Saveable
+Data Unsigned long integer – the size in bytes of the module-owned
+[Saveable Data] field.
 32 - 39 1 Module Option 0
 to Option 7
 Unsigned byte integer – Values for options 0 to 7 as set by the
@@ -229,40 +225,27 @@ depends on the module type and version. Used options are
 always at the beginning of this list. Options always appear in
 this list in the same order as in the ZOIA option list for the
 module being added or changed.
-40 ([Module
-size]*4) -
-56
-Additional 0ptions List of unsigned long integers – After the [Module Option] field
-there could be any number of additional values stored here.
-This list can also be empty (see note 1).
-This seems to depend on the module and what extra values
-the module needs to store. Additional R&D is required to
-interpret this completely. So far, they seem to be the value
-assigned to the module inputs, like the gain for a «Audio
-Output» module if the gain option is selected.
+40 [Number of User
+Parameters] * 4 User Parameters List of unsigned long integers – values assigned to the module's
+adjustable inputs, plus any compatibility values retained by the firmware.
+40 + ([Number of
+User Parameters] * 4) [Size of Saveable
+Data] Saveable Data Opaque bytes owned by the module. Sequencer pages and sampler
+file metadata are stored here and must be preserved exactly. The field is
+padded to the next 4-byte boundary in the file.
 End - 16 16 Module Name Text – the module's name (see note 1).
 This field is optional. On older patches, modules did not have
 names. This will be zeroes if the field is present and the user
 did not change the default module name.
 Note 1:
-Designing a simple way to figure out the number of values in the [Additional Options] field is a bit of a
-challenge. The reason being that there is more than one field that can affect the [Module Size]. First,
-there is [Additional Options] which can contain an unknown number of 32 bits values and [Module
-Name] which can be present or not. Because of that, it cannot be computed directly from the [Module
-Size] value.
-
-If a [Modules Colors] section if present in the patch file, it means it has been saved with firmware 1.10+
-and since the module names came into existence with firmware version 1.04, we can be sure that the
-[Module Name] is present. In this situation, the number of bytes for the [Additional Options] field can
-be calculated directly from the [Module Size].
-On the other hand, is we cannot be sure whether there is a [Module Name], we propose this method:
-Compute the number of bytes available from position 40 (start of [Additional Options]) up to
-the end of the module's data by subtracting 40 from [Module Size].
-If the number of available bytes is 16 or more, analyze the last 16 bytes to check if it contains
-only values that are valid for a text. If so, suppose that the [Module Name] field is present. If it
-contains any invalid value, we know there are no name present.
-Depending on the outcome of step 2, compute the number of bytes left for the [Additional
-Options] field.
+Read exactly [Number of User Parameters] 32-bit values followed by [Size of Saveable Data] bytes, rounded up
+to a 4-byte boundary.
+Do not infer the number of user parameters from the visible blocks. For example, a current Clock Divider in
+tap mode has three visible adjustable blocks but saves four parameter values. Its single visible «modifier»
+control is backed by the dividend/divisor pair retained for compatibility with older module versions.
+The bytes remaining in [Module Size] are either the 16-byte [Module Name] or, for old unnamed patches,
+zero bytes. Firmware 4.20 changed and compressed sequencer saveable data; it should be treated as opaque
+data rather than decoded as user parameters.
 Connections section
 This section provides information on each connection between one module input and output.
 
@@ -522,9 +505,30 @@ Type ID Module Type Module Category
 (^84) Midi Clock Out Interface
 (^85) Tap to CV Control
 (^86) MIDI Pitch Bend In Interface
+(^87) Euro CV Out 4 System
+(^88) Euro CV In 1 System
+(^89) Euro CV In 2 System
+(^90) Euro CV In 3 System
+(^91) Euro CV In 4 System
+(^92) Euro Headphone Amp System
+(^93) Euro Audio Input 1 System
+(^94) Euro Audio Input 2 System
+(^95) Euro Audio Output 1 System
+(^96) Euro Audio Output 2 System
+(^97) Euro Pushbutton 1 System
+(^98) Euro Pushbutton 2 System
+(^99) Euro CV Out 1 System
+(^100) Euro CV Out 2 System
+(^101) Euro CV Out 3 System
+(^102) Sampler Audio
 (^103) Device Control Interface
 
 (^104) CV Mixer Control
+(^105) Logic Gate Control
+(^106) Reverse Delay Effect
+(^107) Univibe Effect
+(^108) MIDI Pitch Bend Out Interface
+(^109) MIDI Pressure Out Interface
 
 Appendix B – Colors
 The following table shows the numeric values for the color parameters used in ZOIA patches.

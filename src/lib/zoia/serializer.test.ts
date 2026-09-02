@@ -17,6 +17,8 @@ describe('Binary Serializer', () => {
           color: 1,
           options: [1,2,3,4,5,6,7,8],
           parameters: [100, 200],
+          savedData: [9, 8, 7, 6],
+          savedDataSize: 1,
           version: 2
         }
       ],
@@ -43,6 +45,8 @@ describe('Binary Serializer', () => {
     expect(parsed.modules.length).toBe(1);
     expect(parsed.modules[0].name).toBe("ModA");
     expect(parsed.modules[0].parameters).toEqual([100, 200]);
+    expect(parsed.modules[0].savedData).toEqual([9, 8, 7, 6]);
+    expect(parsed.modules[0].savedDataSize).toBe(1);
     expect(parsed.modules[0].version).toBe(2);
     // Check extended color persistence (Module 0 had color 1 (Blue), which is same in old/new)
     // Let's change original patch color to an extended one (8 - Orange)
@@ -75,5 +79,28 @@ describe('Binary Serializer', () => {
       const parsed = parsePatch(buffer);
       
       expect(parsed.modules[0].color).toBe(8);
+  });
+
+  it('should preserve firmware 4.20 sequencer data byte-for-byte', () => {
+      const savedData = Array.from({ length: 4156 }, (_, index) => index % 251);
+      const patch: Patch = {
+          name: "SequencerData",
+          modules: [{
+              id: '0', index: 0, typeId: 4, name: "Sequence", page: 0, gridPosition: 0,
+              color: 4, options: [5, 0, 0, 0, 0, 0, 0, 0],
+              parameters: [100, 200, 300, 400, 500, 600, 700],
+              savedData, version: 0
+          }],
+          connections: [],
+          pageNames: ["Sequence"]
+      };
+
+      const serialized = serializePatch(patch);
+      const parsed = parsePatch(serialized);
+      const serializedAgain = serializePatch(parsed);
+
+      expect(parsed.modules[0].parameters).toEqual(patch.modules[0].parameters);
+      expect(parsed.modules[0].savedData).toEqual(savedData);
+      expect(new Uint8Array(serializedAgain)).toEqual(new Uint8Array(serialized));
   });
 });

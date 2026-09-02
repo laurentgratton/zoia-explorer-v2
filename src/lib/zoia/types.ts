@@ -22,7 +22,9 @@ export interface Module {
   gridPosition: number;
   color: number;
   options: number[]; // The 8 byte options
-  parameters: number[]; // The additional options (u32s)
+  parameters: number[]; // User parameter values (u32s)
+  savedData?: number[]; // Opaque module-owned save data, padded to a 4-byte boundary
+  savedDataSize?: number; // Unpadded byte count stored in the module header
   version?: number;
 }
 

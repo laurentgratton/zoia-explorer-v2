@@ -21,6 +21,12 @@ export function serializePatch(patch: Patch): ArrayBuffer {
 
   for (const mod of patch.modules) {
     const moduleStartOffset = offset;
+    const savedData = mod.savedData || [];
+    const savedDataSize = mod.savedDataSize ?? savedData.length;
+
+    if (Math.ceil(savedDataSize / 4) * 4 !== savedData.length) {
+      throw new Error(`Saved data for module ${mod.index} does not match its declared size`);
+    }
     
     // Placeholder for Module Size
     const moduleSizeOffset = offset;
@@ -29,8 +35,7 @@ export function serializePatch(patch: Patch): ArrayBuffer {
     view.setUint32(offset, mod.typeId, true);
     offset += 4;
 
-    // Unknown (0)
-    view.setUint32(offset, 0, true);
+    view.setUint32(offset, mod.version || 0, true);
     offset += 4;
 
     view.setUint32(offset, mod.page, true);
@@ -47,7 +52,7 @@ export function serializePatch(patch: Patch): ArrayBuffer {
     view.setUint32(offset, mod.parameters.length, true);
     offset += 4;
 
-    view.setUint32(offset, mod.version || 0, true);
+    view.setUint32(offset, savedDataSize, true);
     offset += 4;
 
     // Options (8 bytes)
@@ -61,6 +66,12 @@ export function serializePatch(patch: Patch): ArrayBuffer {
     for (const param of mod.parameters) {
       view.setUint32(offset, param, true);
       offset += 4;
+    }
+
+    // Module-owned data such as sequencer pages and sampler file metadata
+    for (const value of savedData) {
+      view.setUint8(offset, value);
+      offset += 1;
     }
 
     // Name (Always write 16 bytes)
