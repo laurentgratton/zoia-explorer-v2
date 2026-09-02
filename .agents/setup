@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+step() {
+  local description="$1"
+  shift
+  local started_at=$SECONDS
+  printf '==> %s\n' "$description"
+  "$@"
+  printf '<== %s completed in %ss\n' "$description" "$((SECONDS - started_at))"
+}
+
+step "Checking Node.js toolchain" bash -c '
+  command -v node >/dev/null
+  command -v npm >/dev/null
+  node -e "const [major] = process.versions.node.split(\".\").map(Number); if (major < 20) process.exit(1)"
+'
+
+step "Installing locked npm dependencies" npm ci --no-audit --no-fund
