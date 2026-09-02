@@ -107,6 +107,12 @@ export function runForceGraph(
         .append("svg")
         .attr("viewBox", [-width / 2, -height / 2, width, height]);
 
+    const resizeObserver = new ResizeObserver(() => {
+        const { width, height } = container.getBoundingClientRect();
+        svg.attr("viewBox", [-width / 2, -height / 2, width, height]);
+    });
+    resizeObserver.observe(container);
+
     const net = svg
         .append("g")
         .attr('width', width)
@@ -182,6 +188,7 @@ export function runForceGraph(
 
     return {
         destroy: () => {
+            resizeObserver.disconnect();
             simulation.stop();
         },
         nodes: () => {

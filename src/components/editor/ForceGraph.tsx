@@ -17,7 +17,7 @@ export function ForceGraph({ linksData, nodesData }: {linksData: Connection[], n
         }
 
         return destroyFn;
-    });
+    }, [linksData, nodesData, setActivePage]);
 
     return <div ref={containerRef} className="flex-1 overflow-y-auto svgContainer" style={{ height: "100%" }} />;
 }

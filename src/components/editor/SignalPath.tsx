@@ -1,14 +1,22 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import { usePatchStore } from '@/store/patchStore';
 import {ForceGraph} from "@/components/editor/ForceGraph";
+
+const DEFAULT_PANEL_WIDTH = 720;
+const MIN_PANEL_WIDTH = 320;
+const MAX_PANEL_WIDTH = 1200;
 
 export default function SignalSection() {
 
     const { patch } = usePatchStore();
     const [isOpen, setIsOpen] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
+    const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
     const [nodes, setNodes] = useState(patch?.modules || []);
     const [links, setLinks] = useState(patch?.connections || []);
     const [patchId, setPatchId] = useState(patch?.name);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const resizeStart = useRef<{ x: number; width: number } | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -27,8 +35,66 @@ export default function SignalSection() {
         }
     }, [patch, patchId]);
 
+    const constrainWidth = (width: number) => Math.min(
+        Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, window.innerWidth - 48)),
+        Math.max(MIN_PANEL_WIDTH, width),
+    );
+
+    const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        resizeStart.current = {
+            x: event.clientX,
+            width: panelRef.current?.getBoundingClientRect().width ?? panelWidth,
+        };
+        setIsResizing(true);
+    };
+
+    const resize = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!resizeStart.current) return;
+        const { x, width } = resizeStart.current;
+        setPanelWidth(constrainWidth(width + x - event.clientX));
+    };
+
+    const stopResize = () => {
+        resizeStart.current = null;
+        setIsResizing(false);
+    };
+
+    const resizeWithKeyboard = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        setPanelWidth((width) => constrainWidth(width + (event.key === 'ArrowLeft' ? 20 : -20)));
+    };
+
     return (
-        <div className={`absolute top-0 right-0 h-full w-180 bg-gray-900 border-l border-gray-700 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div
+            ref={panelRef}
+            className={`absolute top-0 right-0 h-full max-w-[calc(100vw-3rem)] bg-gray-900 border-l border-gray-700 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'} ${isResizing ? 'select-none' : ''}`}
+            style={{width: panelWidth}}
+        >
+            {isOpen && (
+                <div
+                    role="separator"
+                    aria-label="Resize Signal Path panel"
+                    aria-orientation="vertical"
+                    aria-valuemin={MIN_PANEL_WIDTH}
+                    aria-valuemax={MAX_PANEL_WIDTH}
+                    aria-valuenow={panelWidth}
+                    tabIndex={0}
+                    title="Drag to resize Signal Path"
+                    className="absolute inset-y-0 -left-1.5 z-10 w-3 cursor-ew-resize touch-none focus:outline-none group"
+                    onPointerDown={startResize}
+                    onPointerMove={resize}
+                    onPointerUp={stopResize}
+                    onPointerCancel={stopResize}
+                    onLostPointerCapture={stopResize}
+                    onKeyDown={resizeWithKeyboard}
+                >
+                    <div className={`mx-auto h-full w-0.5 transition-colors ${isResizing ? 'bg-yellow-500' : 'bg-transparent group-hover:bg-yellow-500 group-focus:bg-yellow-500'}`} />
+                </div>
+            )}
+
             {/* Toggle Handle */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
