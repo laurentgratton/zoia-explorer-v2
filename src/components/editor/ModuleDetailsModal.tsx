@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePatchStore } from '@/store/patchStore';
-import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getModuleDefinition, getSamplerSampleFile } from '@/lib/zoia/moduleLib';
 import ConnectionPickerModal from './ConnectionPickerModal';
 
 export default function ModuleDetailsModal() {
@@ -31,6 +31,7 @@ export default function ModuleDetailsModal() {
   if (!moduleData) return null;
 
   const definition = getModuleDefinition(moduleData!.typeId);
+  const samplerSampleFile = getSamplerSampleFile(moduleData);
 
   // Connections with original indices
   const connectionsWithIndex = patch.connections.map((c, i) => ({ ...c, originalIndex: i }));
@@ -113,6 +114,7 @@ export default function ModuleDetailsModal() {
            <div className="flex justify-between"><span>ID:</span> <span className="text-white">{moduleData!.index}</span></div>
            <div className="flex justify-between"><span>Page:</span> <span className="text-white">{moduleData!.page}</span></div>
            <div className="flex justify-between"><span>Grid Position:</span> <span className="text-white">{moduleData!.gridPosition}</span></div>
+           {samplerSampleFile && <div className="flex justify-between"><span>Sample:</span> <span className="text-white">{samplerSampleFile}</span></div>}
         </div>
 
         {/* Rename */}

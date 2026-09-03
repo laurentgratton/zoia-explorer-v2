@@ -1,4 +1,5 @@
-import { BlockDefinition, getModuleDefinition, MODULE_DEFINITIONS } from './moduleLib';
+import { BlockDefinition, getModuleDefinition, getSamplerSampleFile, MODULE_DEFINITIONS } from './moduleLib';
+import { Module } from './types';
 
 const FIRMWARE_OPTION_COUNTS = [
   4, 1, 2, 0, 6, 6, 7, 1, 0, 1, 1, 1, 2, 5, 4, 2, 1, 0, 0, 1,
@@ -279,6 +280,18 @@ describe('dynamic firmware layouts', () => {
       'direction', 'start', 'length', 'position CV out', 'loop end CV out',
       'audio out L', 'audio out R'
     ]);
+  });
+
+  it('reads the sampler filename from module-owned save data', () => {
+    const sampler = {
+      typeId: 102,
+      savedData: [...Array.from('KICK.WAV', char => char.charCodeAt(0)), 0, 65, 66],
+      savedDataSize: 11,
+    } as Module;
+
+    expect(getSamplerSampleFile(sampler)).toBe('KICK.WAV');
+    expect(getSamplerSampleFile({...sampler, savedData: [0, 65]})).toBeUndefined();
+    expect(getSamplerSampleFile({...sampler, typeId: 1})).toBeUndefined();
   });
 
   it('expands CV Mixer and Logic Gate to firmware limits', () => {

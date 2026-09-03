@@ -34,6 +34,17 @@ export interface ModuleDefinition {
 
 export const hasEuroModules = (modules: Module[] | undefined): boolean =>  modules?.some(m => MODULE_DEFINITIONS[m.typeId]?.category === "System") || false;
 
+export function getSamplerSampleFile(module: Module): string | undefined {
+  if (module.typeId !== 102 || !module.savedData) return undefined;
+
+  const fieldLength = Math.min(module.savedDataSize ?? module.savedData.length, module.savedData.length, 256);
+  const terminator = module.savedData.indexOf(0);
+  const end = terminator >= 0 && terminator < fieldLength ? terminator : fieldLength;
+  if (end === 0) return undefined;
+
+  return String.fromCharCode(...module.savedData.slice(0, end));
+}
+
 export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
   0: { typeId: 0, name: "SV Filter", category: "Audio", blocks: [{"name": "audio in", "direction": 0, "type": 0}, {"name": "frequency", "direction": 0, "hasParameter": true, "parameterIndex": 0, "type": 1}, {"name": "resonance", "direction": 0, "hasParameter": true, "parameterIndex": 1, "type": 1}, {"name": "lowpass output", "direction": 1, "type": 0}, {"name": "hipass output", "direction": 1, "type": 0}, {"name": "bandpass output", "direction": 1, "type": 0}], options: [{"name": "lowpass output", "values": ["on", "off"]}, {"name": "hipass output", "values": ["off", "on"]}, {"name": "bandpass output", "values": ["off", "on"]}, {"name": "freq change", "values": ["smooth", "instant"]}], minBlocks: 3, maxBlocks: 6, "calcBlocks": (d) => {
       const blocks = [d.blocks[0],d.blocks[1],d.blocks[2]];
