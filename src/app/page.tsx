@@ -10,18 +10,23 @@ import ModuleDetailsModal from '@/components/editor/ModuleDetailsModal';
 import NamePromptModal from '@/components/editor/NamePromptModal';
 import DisclaimerModal from '@/components/layout/DisclaimerModal';
 import { serializePatch } from '@/lib/zoia/serializer';
+import PatchPreview from '@/components/preview/PatchPreview';
+import { isPreviewFeatureEnabled } from '@/lib/preview/featureFlag';
 
 export default function Home() {
   const patch = usePatchStore((state) => state.patch);
   const renamePatch = usePatchStore((state) => state.renamePatch);
   const [isRenamingPatch, setIsRenamingPatch] = React.useState(false);
   const [showDisclaimer, setShowDisclaimer] = React.useState(false);
+  const [previewEnabled, setPreviewEnabled] = React.useState(false);
+  const [workspace, setWorkspace] = React.useState<'patch' | 'preview'>('patch');
 
   React.useEffect(() => {
     const hasSeenDisclaimer = localStorage.getItem('zoia-disclaimer-seen');
     if (!hasSeenDisclaimer) {
       setShowDisclaimer(true);
     }
+    setPreviewEnabled(isPreviewFeatureEnabled(window.location.search));
   }, []);
 
   const handleAcceptDisclaimer = () => {
@@ -81,7 +86,30 @@ export default function Home() {
                       {patch.name.replace(/\0/g, '') || 'Untitled Patch'}
                     </h2>
                     <div className="h-6 w-px bg-gray-600"></div>
-                    <PageSelector />
+                    {previewEnabled && (
+                      <div className="flex items-center h-full gap-1" aria-label="Patch workspace">
+                        <button
+                          type="button"
+                          onClick={() => setWorkspace('patch')}
+                          className={`h-12 px-3 text-sm border-b-2 transition-colors ${workspace === 'patch' ? 'border-violet-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                        >
+                          Patch
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWorkspace('preview')}
+                          className={`h-12 px-3 text-sm border-b-2 transition-colors ${workspace === 'preview' ? 'border-violet-500 text-white' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                        >
+                          Preview
+                        </button>
+                      </div>
+                    )}
+                    {workspace === 'patch' && (
+                      <>
+                        {previewEnabled && <div className="h-6 w-px bg-gray-600"></div>}
+                        <PageSelector />
+                      </>
+                    )}
                  </div>
                  <button 
                    onClick={handleDownload}
@@ -91,7 +119,7 @@ export default function Home() {
                  </button>
               </div>
               <div className="flex-1 relative">
-                 <NodeGraph />
+                 {workspace === 'preview' && previewEnabled ? <PatchPreview /> : <NodeGraph />}
               </div>
            </div>
         ) : (

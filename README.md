@@ -32,6 +32,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Browser Preview (experimental)
+
+Append `?preview=1` to the page URL to enable the **Patch / Preview** tabs. After loading a patch, Preview converts it with Zoia2PD and can run it through libpd-wasm. Audio is initialized only after a user action and every session starts with master output at 0% (muted).
+
+The Preview flag is intentionally exact: omitting it, or using any value other than `1`, leaves the existing Patch workspace unchanged.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

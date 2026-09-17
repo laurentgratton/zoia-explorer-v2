@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/copy-libpd-worklet.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,10 +14,12 @@
     "d3": "^7.9.0",
     "d3-force": "^3.0.0",
     "idb": "^8.0.3",
+    "libpd-wasm": "0.1.6",
     "next": "16.0.3",
     "react": "19.2.0",
     "react-d3-library": "^1.1.8",
     "react-dom": "19.2.0",
+    "zoia2pd": "file:vendor/zoia2pd-0.2.1.tgz",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
