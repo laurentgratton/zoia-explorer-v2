@@ -3,7 +3,7 @@ import { usePatchStore } from '@/store/patchStore';
 import { getModuleDefinition, getSamplerSampleFile } from '@/lib/zoia/moduleLib';
 import ConnectionPickerModal from './ConnectionPickerModal';
 
-export default function ModuleDetailsModal() {
+export default function ModuleDetailsModal({ docked = false }: { docked?: boolean }) {
   const [showDebug, setShowDebug] = useState(false);
   const [pickerState, setPickerState] = useState<{show: boolean, direction: 'input' | 'output'}>({show: false, direction: 'input'});
   
@@ -91,10 +91,15 @@ export default function ModuleDetailsModal() {
   const blocks = definition?.calcBlocks({blocks: definition.blocks, options: moduleData.options}) || [];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleClose}>
-      <div className="bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl w-[600px] max-h-[90vh] overflow-y-auto flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className={docked ? 'absolute inset-y-0 right-0 z-20 w-80 max-w-full xl:static xl:shrink-0' : 'fixed inset-0 bg-black/50 flex items-center justify-center z-50'} onClick={handleClose}>
+      <div
+        role={docked ? 'region' : 'dialog'}
+        aria-label="Module details"
+        className={docked ? 'bg-gray-800 border-l border-gray-700 p-4 h-full overflow-y-auto flex flex-col' : 'bg-gray-800 border border-gray-700 p-6 rounded-lg shadow-xl w-[600px] max-h-[90vh] overflow-y-auto flex flex-col'}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className={`flex justify-between items-center mb-4 ${docked ? 'sticky top-0 z-10 bg-gray-800 pb-2' : ''}`}>
            <h2 className="text-xl font-bold text-white">{moduleData!.name || definition?.name || 'Unknown Module'}</h2>
            <div className="flex gap-2 items-center">
              <button 
@@ -103,7 +108,7 @@ export default function ModuleDetailsModal() {
              >
                Delete
              </button>
-             <button onClick={handleClose} className="text-gray-400 hover:text-white p-1">✕</button>
+             <button onClick={handleClose} aria-label="Close module details" className="text-gray-400 hover:text-white p-1">✕</button>
            </div>
         </div>
 
@@ -149,6 +154,17 @@ export default function ModuleDetailsModal() {
                                if (!isNaN(val)) {
                                  const newParams = [...moduleData!.options];
                                  newParams[i] = val;
+                                 if (docked && definition) {
+                                   const nextBlocks = definition.calcBlocks({ blocks: definition.blocks, options: newParams });
+                                   const layoutChanges = nextBlocks.length !== blocks.length || nextBlocks.some((block, index) =>
+                                     block.name !== blocks[index]?.name || block.direction !== blocks[index]?.direction || block.type !== blocks[index]?.type
+                                   );
+                                   const hasStars = patch.starredElements?.some(star => star.type === 'parameter' && star.moduleIndex === moduleData.index);
+                                   if (layoutChanges && (incoming.length || outgoing.length || hasStars)) {
+                                     alert('Disconnect and unstar this module before changing an option that changes its ports. Existing connections and stars use port numbers and could otherwise target the wrong control.');
+                                     return;
+                                   }
+                                 }
                                  updateModuleParams(moduleData!.index, newParams);
                                }
                             }}

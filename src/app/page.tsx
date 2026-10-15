@@ -5,6 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { usePatchStore } from '@/store/patchStore';
 import NodeGraph from '@/components/editor/NodeGraph';
+import ModuleCanvas from '@/components/editor/ModuleCanvas';
 import PageSelector from '@/components/editor/PageSelector';
 import ModuleDetailsModal from '@/components/editor/ModuleDetailsModal';
 import NamePromptModal from '@/components/editor/NamePromptModal';
@@ -16,10 +17,12 @@ import { isPreviewFeatureEnabled } from '@/lib/preview/featureFlag';
 export default function Home() {
   const patch = usePatchStore((state) => state.patch);
   const renamePatch = usePatchStore((state) => state.renamePatch);
+  const setSelectedModuleIndex = usePatchStore((state) => state.setSelectedModuleIndex);
   const [isRenamingPatch, setIsRenamingPatch] = React.useState(false);
   const [showDisclaimer, setShowDisclaimer] = React.useState(false);
   const [previewEnabled, setPreviewEnabled] = React.useState(false);
   const [workspace, setWorkspace] = React.useState<'patch' | 'preview'>('patch');
+  const [editorView, setEditorView] = React.useState<'grid' | 'modules'>('grid');
 
   React.useEffect(() => {
     const hasSeenDisclaimer = localStorage.getItem('zoia-disclaimer-seen');
@@ -63,7 +66,7 @@ export default function Home() {
           isOpen={showDisclaimer} 
           onClose={handleAcceptDisclaimer} 
         />
-        <ModuleDetailsModal />
+        {(workspace !== 'patch' || editorView === 'grid') && <ModuleDetailsModal />}
         <NamePromptModal
           isOpen={isRenamingPatch}
           title="Rename Patch"
@@ -75,7 +78,7 @@ export default function Home() {
           onCancel={() => setIsRenamingPatch(false)}
         />
         {patch ? (
-           <div className="flex-1 flex flex-col">
+           <div className="flex-1 min-h-0 flex flex-col">
               <div className="h-12 border-b border-gray-700 flex items-center px-4 justify-between bg-gray-800 gap-4">
                  <div className="flex items-center gap-4 overflow-hidden">
                     <h2 
@@ -107,6 +110,22 @@ export default function Home() {
                     {workspace === 'patch' && (
                       <>
                         {previewEnabled && <div className="h-6 w-px bg-gray-600"></div>}
+                        <div role="group" aria-label="Editor view" className="flex shrink-0 rounded border border-gray-600 p-0.5">
+                          {(['grid', 'modules'] as const).map(view => (
+                            <button
+                              key={view}
+                              type="button"
+                              aria-pressed={editorView === view}
+                              onClick={() => {
+                                setSelectedModuleIndex(null);
+                                setEditorView(view);
+                              }}
+                              className={`px-3 py-1 rounded text-sm focus-visible:outline-2 focus-visible:outline-white ${editorView === view ? 'bg-violet-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                            >
+                              {view === 'grid' ? 'Grid' : 'Modules'}
+                            </button>
+                          ))}
+                        </div>
                         <PageSelector />
                       </>
                     )}
@@ -118,8 +137,8 @@ export default function Home() {
                    Download .bin
                  </button>
               </div>
-              <div className="flex-1 relative">
-                 {workspace === 'preview' && previewEnabled ? <PatchPreview /> : <NodeGraph />}
+              <div className="flex-1 min-h-0 relative">
+                 {workspace === 'preview' && previewEnabled ? <PatchPreview /> : editorView === 'grid' ? <NodeGraph /> : <ModuleCanvas />}
               </div>
            </div>
         ) : (

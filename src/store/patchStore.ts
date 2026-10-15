@@ -7,6 +7,8 @@ interface PatchState {
   activePage: number;
   showSystemModules: boolean;
   selectedModuleIndex: number | null;
+  moduleCanvasPositions: Record<number, { x: number; y: number }>;
+  setModuleCanvasPosition: (moduleIndex: number, position: { x: number; y: number }) => void;
   setPatch: (patch: Patch) => void;
   setActivePage: (page: number) => void;
   toggleSystemModules: () => void;
@@ -35,11 +37,15 @@ export const usePatchStore = create<PatchState>((set) => ({
   activePage: 0,
   showSystemModules: false,
   selectedModuleIndex: null,
-  setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null }),
+  moduleCanvasPositions: {},
+  setModuleCanvasPosition: (moduleIndex, position) => set(state => ({
+    moduleCanvasPositions: { ...state.moduleCanvasPositions, [moduleIndex]: position },
+  })),
+  setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   setActivePage: (page) => set({ activePage: page }),
   toggleSystemModules: () => set((state) => ({ showSystemModules: hasEuroModules(state?.patch?.modules) ? !state.showSystemModules : false })),
   setSelectedModuleIndex: (index) => set({ selectedModuleIndex: index }),
-  clearPatch: () => set({ patch: null, activePage: 0, selectedModuleIndex: null }),
+  clearPatch: () => set({ patch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   updateModulePosition: (moduleIndex, gridPosition) => set((state) => {
     if (!state.patch) return {};
     const newModules = state.patch.modules.map((m) =>
@@ -161,6 +167,11 @@ export const usePatchStore = create<PatchState>((set) => ({
         modules: newModules, 
         connections: newConnections 
       },
+      moduleCanvasPositions: Object.fromEntries(
+        Object.entries(state.moduleCanvasPositions)
+          .filter(([index]) => Number(index) !== indexToRemove)
+          .map(([index, position]) => [Number(index) > indexToRemove ? Number(index) - 1 : Number(index), position])
+      ),
       selectedModuleIndex: null
     };
   }),
