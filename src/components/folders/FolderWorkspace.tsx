@@ -356,8 +356,8 @@ export default function FolderWorkspace({
             </div>
             <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-700 px-5 py-3">
               <p className="max-w-lg text-xs text-gray-500">
-                Empty slots stay in place. ZIP export currently requires all 64 slots until
-                partial-load behavior is verified on hardware.
+                ZIP export skips empty slots and preserves patch slot numbers. Extract into a
+                fresh SD-card folder to avoid stale numbered files.
               </p>
               <div className="flex gap-2">
                 <button className={buttonClass} onClick={() => openAction('rename-folder')}>

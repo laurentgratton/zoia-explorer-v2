@@ -130,10 +130,6 @@ export function importFolder(
 export function exportFolderZip(folder: PatchFolder): Uint8Array {
   const count = folder.slots.filter(Boolean).length;
   if (!count) throw new Error('Cannot export an empty folder.');
-  if (count !== SLOT_COUNT)
-    throw new Error(
-      'Partial-folder export is not available yet: missing-slot behavior must first be verified on a ZOIA. Full 64-slot folders can export.',
-    );
   const files: Record<string, Uint8Array> = {};
   folder.slots.forEach((entry, slot) => {
     if (entry)

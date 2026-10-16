@@ -89,7 +89,11 @@ test('reviewed imports reject slot conflicts and export original bytes with safe
   expect(files['Live_Set/003_Warm_Delay.bin']).toEqual(new Uint8Array(expected));
   expect(files['Live_Set/063_Old.bin']).toEqual(new Uint8Array(original.data));
   expect(() => exportFolderZip(createFolder('Empty'))).toThrow('empty');
-  expect(() => exportFolderZip(importFolder('Sparse', [{ slot: 3, entry: original }]))).toThrow(
-    'Partial',
-  );
+  const sparse = unzipSync(exportFolderZip(importFolder('Sparse', [
+    { slot: 3, entry: original },
+    { slot: 63, entry: renamed.slots[3]! },
+  ])));
+  expect(Object.keys(sparse)).toEqual(['Sparse/003_Old.bin', 'Sparse/063_Warm_Delay.bin']);
+  expect(sparse['Sparse/003_Old.bin']).toEqual(new Uint8Array(original.data));
+  expect(sparse['Sparse/063_Warm_Delay.bin']).toEqual(new Uint8Array(expected));
 });
