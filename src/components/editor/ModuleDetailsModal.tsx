@@ -117,7 +117,7 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
            <div className="flex justify-between"><span>Type:</span> <span className="text-white">{definition?.name || moduleData!.typeId}</span></div>
            <div className="flex justify-between"><span>Category:</span> <span className="text-white">{definition?.category || 'N/A'}</span></div>
            <div className="flex justify-between"><span>ID:</span> <span className="text-white">{moduleData!.index}</span></div>
-           {!docked && <div className="flex justify-between"><span>Page:</span> <span className="text-white">{moduleData!.page}</span></div>}
+           <div className="flex justify-between gap-3"><span>Page:</span> <span className="text-white text-right break-words min-w-0">{docked ? (patch.pageNames?.[moduleData.page]?.replace(/\0/g, '').trim() || `Page ${moduleData.page}`) : moduleData.page}</span></div>
            <div className="flex justify-between"><span>Grid Position:</span> <span className="text-white">{moduleData!.gridPosition}</span></div>
            {samplerSampleFile && <div className="flex justify-between"><span>Sample:</span> <span className="text-white">{samplerSampleFile}</span></div>}
         </div>
