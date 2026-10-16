@@ -3,6 +3,7 @@
 import React from 'react';
 import type { BrowserConversionV1, PreviewWarning } from 'zoia2pd';
 import { serializePatch } from '@/lib/zoia/serializer';
+import { getModuleBlocks } from '@/lib/zoia/moduleLib';
 import { usePatchStore } from '@/store/patchStore';
 import {
   getModuleColor,
@@ -61,6 +62,21 @@ export default function PatchPreview() {
 
     const convert = async () => {
       try {
+        // zoia2pd 0.2.1 interprets endpoints as compact visible indices.
+        // Never silently preview a different route than the hardware patch.
+        const endpoints = patch.connections.flatMap(connection => [
+            [connection.sourceModuleIndex, connection.sourcePortIndex],
+            [connection.destModuleIndex, connection.destPortIndex],
+        ]);
+        endpoints.push(...(patch.starredElements ?? []).flatMap(star =>
+          star.type === 'parameter' ? [[star.moduleIndex, star.blockIndex]] : []
+        ));
+        for (const [moduleIndex, portId] of endpoints) {
+          const module = patch.modules.find(module => module.index === moduleIndex);
+          if (!module || getModuleBlocks(module)[portId]?.firmwareId !== portId) {
+            throw new Error('Audio Preview is unavailable for this patch: its firmware port IDs require a newer converter. Editing and binary export remain available.');
+          }
+        }
         const bytes = serializePatch(patch);
         const { convertBinaryForBrowser } = await import('zoia2pd');
         const nextConversion = convertBinaryForBrowser(bytes);

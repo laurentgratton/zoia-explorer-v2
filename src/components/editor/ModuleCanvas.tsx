@@ -5,7 +5,7 @@ import {
   type Node, type NodeProps, type Edge, type Connection as FlowConnection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getModuleDefinition, getModuleBlocks, getModuleBlock } from '@/lib/zoia/moduleLib';
 import { getModuleColor } from '@/lib/preview/previewModel';
 import type { Module } from '@/lib/zoia/types';
 import { usePatchStore } from '@/store/patchStore';
@@ -25,10 +25,16 @@ function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
   const selectModule = usePatchStore(s => s.setSelectedModuleIndex);
   const updateParameters = usePatchStore(s => s.updateModuleParameters);
   const definition = getModuleDefinition(module.typeId);
-  const blocks = definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? [];
-  const firstParameter = blocks.findIndex(block => block.hasParameter);
-  const shown = blocks.map((block, index) => ({ ...block, index })).filter(block =>
-    expanded || block.type === 0 || connectedPorts.includes(block.index) || block.index === firstParameter || block.direction === 1
+  const blocks = getModuleBlocks(module);
+  for (const id of new Set(connectedPorts)) {
+    if (!blocks.some(block => block.firmwareId === id)) {
+      const saved = getModuleBlock(module, id);
+      if (saved) blocks.push(saved);
+    }
+  }
+  const firstParameter = blocks.find(block => block.hasParameter)?.firmwareId;
+  const shown = blocks.filter(block =>
+    expanded || block.type === 0 || connectedPorts.includes(block.firmwareId) || block.firmwareId === firstParameter || block.direction === 1
   );
   const hiddenCount = blocks.length - shown.length;
   const color = getModuleColor(module.color);
@@ -52,9 +58,10 @@ function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
       </div>
       <div className="py-2">
         {shown.map(block => (
-          <div key={block.index} className="relative px-4 py-1.5 text-xs">
+          <div key={block.firmwareId} className="relative px-4 py-1.5 text-xs">
             <Handle
-              id={String(block.index)}
+              id={String(block.firmwareId)}
+              isConnectable={!block.inactive}
               type={block.direction === 0 ? 'target' : 'source'}
               position={block.direction === 0 ? Position.Left : Position.Right}
               title={`${block.name} · ${block.type === 0 ? 'Audio' : 'CV'} ${block.direction === 0 ? 'input' : 'output'}`}
@@ -63,6 +70,7 @@ function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
             <div className={`flex items-center gap-2 ${block.direction === 1 ? 'justify-end' : ''}`}>
               <span>{block.name}</span>
               <span className="text-[10px] text-gray-500">{block.type === 0 ? 'Audio' : 'CV'}</span>
+              {block.inactive && <span className="text-[10px] text-amber-300" title="Saved endpoint absent from the current option layout; retained read-only">Saved port</span>}
             </div>
             {block.hasParameter && block.parameterIndex !== undefined && (
               <label className="nodrag nopan flex items-center gap-2 mt-1 text-[10px] text-gray-400" onClick={event => event.stopPropagation()}>
@@ -111,16 +119,16 @@ function CanvasControls() {
   const height = useStore(state => state.height);
   const measured = useStore(state => state.nodeLookup.size > 0 &&
     Array.from(state.nodeLookup.values()).every(node => node.measured.width && node.measured.height));
-  const fittedSize = useRef<{ width: number; height: number } | null>(null);
+  const initiallyFitted = useRef(false);
   const fitCanvas = useCallback(() => {
     void fitView({ padding: 0.18, maxZoom: 1 });
   }, [fitView]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (!measured || width <= 0 || height <= 0) return;
-      // Node measurements can change during a drag. Only refit when the canvas itself resizes.
-      if (fittedSize.current?.width === width && fittedSize.current.height === height) return;
-      fittedSize.current = { width, height };
+      // Opening details resizes the canvas; preserve the user's viewport after initial layout.
+      if (initiallyFitted.current) return;
+      initiallyFitted.current = true;
       fitCanvas();
     });
     return () => cancelAnimationFrame(frame);
@@ -135,7 +143,7 @@ function CanvasControls() {
           requestAnimationFrame(fitCanvas);
         }}
       >
-        Arrange modules
+        Reset placement
       </button>
     </Panel>
   );
@@ -154,14 +162,17 @@ export default function ModuleCanvas() {
   const { nodes, edges, unresolvedCount } = useMemo(() => {
     if (!patch) return { nodes: [], edges: [], unresolvedCount: 0 };
     const connections = patch.connections.map((connection, index) => ({ ...connection, index }));
-    const ports = new Map(patch.modules.map(module => {
-      const definition = getModuleDefinition(module.typeId);
-      return [module.index, definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? []];
+    const modules = new Map(patch.modules.map(module => [module.index, module]));
+    const layout = layoutModuleCards(patch.modules.map(module => {
+      const blocks = getModuleBlocks(module);
+      const hasInput = blocks.some(block => block.direction === 0);
+      const hasOutput = blocks.some(block => block.direction === 1);
+      return {
+        id: String(module.index), width: dimensions[module.index]?.width ?? 240,
+        height: dimensions[module.index]?.height ?? 280, position: positions[module.index],
+        role: hasOutput && !hasInput ? 'source' : hasInput && !hasOutput ? 'output' : 'processor',
+      };
     }));
-    const layout = layoutModuleCards(patch.modules.map(module => ({
-      id: String(module.index), width: dimensions[module.index]?.width ?? 240,
-      height: dimensions[module.index]?.height ?? 280, position: positions[module.index],
-    })));
     const nodes: CardNode[] = patch.modules.map(module => {
       return {
         id: String(module.index), type: 'moduleCard',
@@ -180,21 +191,30 @@ export default function ModuleCanvas() {
     });
     let unresolvedCount = 0;
     const edges: Edge[] = connections.flatMap(connection => {
-      const source = ports.get(connection.sourceModuleIndex)?.[connection.sourcePortIndex];
-      const target = ports.get(connection.destModuleIndex)?.[connection.destPortIndex];
+      const sourceModule = modules.get(connection.sourceModuleIndex);
+      const targetModule = modules.get(connection.destModuleIndex);
+      const source = sourceModule && getModuleBlock(sourceModule, connection.sourcePortIndex);
+      const target = targetModule && getModuleBlock(targetModule, connection.destPortIndex);
       if (!source || !target || source.direction !== 1 || target.direction !== 0) {
         unresolvedCount++;
         return [];
       }
+      const incoming = connection.destModuleIndex === selectedModuleIndex;
+      const outgoing = connection.sourceModuleIndex === selectedModuleIndex;
+      const highlighted = incoming || outgoing;
+      const dimmed = selectedModuleIndex !== null && !highlighted;
+      const stroke = incoming && outgoing ? '#e879f9' : incoming ? '#22d3ee' : outgoing ? '#fb923c'
+        : source.type === 0 ? '#a78bfa' : '#22d3ee';
       return [{
         id: `connection-${connection.index}`,
         source: String(connection.sourceModuleIndex), target: String(connection.destModuleIndex),
         sourceHandle: String(connection.sourcePortIndex), targetHandle: String(connection.destPortIndex),
         type: 'default',
         label: `${connection.strength / 100}%`,
-        labelStyle: { fill: '#d1d5db', fontSize: 11 },
-        labelBgStyle: { fill: '#111827' },
-        style: { stroke: source.type === 0 ? '#a78bfa' : '#22d3ee', strokeWidth: 2, strokeDasharray: source.type === 0 ? undefined : '6 4' },
+        labelStyle: { fill: highlighted ? stroke : '#d1d5db', fontSize: 11, opacity: dimmed ? 0.4 : 1 },
+        labelBgStyle: { fill: '#111827', opacity: dimmed ? 0.4 : 1 },
+        zIndex: highlighted ? 1 : 0,
+        style: { stroke, strokeWidth: highlighted ? 3 : 2, opacity: dimmed ? 0.35 : 1, strokeDasharray: source.type === 0 ? undefined : '6 4' },
         data: { destination: connection.destModuleIndex },
       }];
     });
@@ -215,11 +235,9 @@ export default function ModuleCanvas() {
     const sourceModule = patch.modules.find(module => String(module.index) === connection.source);
     const targetModule = patch.modules.find(module => String(module.index) === connection.target);
     if (!sourceModule || !targetModule) return false;
-    const sourceDef = getModuleDefinition(sourceModule.typeId);
-    const targetDef = getModuleDefinition(targetModule.typeId);
-    const source = sourceDef?.calcBlocks({ blocks: sourceDef.blocks, options: sourceModule.options })[Number(connection.sourceHandle)];
-    const target = targetDef?.calcBlocks({ blocks: targetDef.blocks, options: targetModule.options })[Number(connection.targetHandle)];
-    return source?.direction === 1 && target?.direction === 0 && !patch.connections.some(existing =>
+    const source = getModuleBlock(sourceModule, Number(connection.sourceHandle));
+    const target = getModuleBlock(targetModule, Number(connection.targetHandle));
+    return source?.direction === 1 && target?.direction === 0 && !source.inactive && !target.inactive && source.type === target.type && !patch.connections.some(existing =>
       existing.sourceModuleIndex === sourceModule.index && existing.sourcePortIndex === Number(connection.sourceHandle) &&
       existing.destModuleIndex === targetModule.index && existing.destPortIndex === Number(connection.targetHandle)
     );
@@ -262,6 +280,9 @@ export default function ModuleCanvas() {
         </ReactFlow>
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-3 text-xs pointer-events-none">
           <span className="rounded bg-gray-900/95 px-3 py-2 text-gray-300">○ Audio · □ CV · Drag a socket to connect</span>
+          {selectedModuleIndex !== null && <span className="rounded bg-gray-900/95 px-3 py-2">
+            <span className="text-cyan-400">Incoming</span> · <span className="text-orange-400">Outgoing</span> · <span className="text-fuchsia-400">Self-connection</span>
+          </span>}
           {unresolvedCount > 0 && <span role="status" className="rounded bg-gray-900 px-3 py-2 text-amber-300">{unresolvedCount} connections hidden: port IDs do not match editor metadata. Port labels may be incorrect.</span>}
         </div>
         {!nodes.length && <p className="absolute top-20 left-6 text-sm text-gray-400">No modules in this patch. Add one from the Modules library.</p>}

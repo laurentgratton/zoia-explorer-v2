@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePatchStore } from '@/store/patchStore';
-import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getModuleDefinition, getModuleBlock } from '@/lib/zoia/moduleLib';
 
 export default function StarredSection() {
   const { patch, setSelectedModuleIndex, setActivePage } = usePatchStore();
@@ -55,8 +55,7 @@ export default function StarredSection() {
                   const mod = patch.modules.find(m => m.index === item.moduleIndex);
                   if (!mod) return null;
                   const def = getModuleDefinition(mod.typeId);
-                  const blocks = def?.calcBlocks({blocks: def.blocks, options: mod.options}) || [];
-                  const blockName = blocks[item.blockIndex]?.name || `Block ${item.blockIndex}`;
+                  const blockName = getModuleBlock(mod, item.blockIndex)?.name || `Block ${item.blockIndex}`;
                   
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-2 rounded border border-gray-700 hover:border-gray-600 transition-colors">
@@ -80,11 +79,11 @@ export default function StarredSection() {
                   const srcMod = patch.modules.find(m => m.index === conn.sourceModuleIndex);
                   const destMod = patch.modules.find(m => m.index === conn.destModuleIndex);
                   
-                  const srcDef = getModuleDefinition(srcMod?.typeId || -1);
-                  const destDef = getModuleDefinition(destMod?.typeId || -1);
+                  const srcDef = getModuleDefinition(srcMod?.typeId ?? -1);
+                  const destDef = getModuleDefinition(destMod?.typeId ?? -1);
       
-                  const srcBlocks = srcDef?.calcBlocks({blocks: srcDef.blocks, options: srcMod!.options}) || [];
-                  const destBlocks = destDef?.calcBlocks({blocks: destDef.blocks, options: destMod!.options}) || [];
+                  const srcBlock = srcMod && getModuleBlock(srcMod, conn.sourcePortIndex);
+                  const destBlock = destMod && getModuleBlock(destMod, conn.destPortIndex);
       
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-2 rounded border border-gray-700 hover:border-gray-600 transition-colors">
@@ -110,8 +109,8 @@ export default function StarredSection() {
                           </span>
                        </div>
                        <div className="flex justify-between text-[10px] text-gray-600 mt-1">
-                          <span>{srcBlocks[conn.sourcePortIndex]?.name}</span>
-                          <span>{destBlocks[conn.destPortIndex]?.name}</span>
+                          <span>{srcBlock?.name || `Block ${conn.sourcePortIndex}`}</span>
+                          <span>{destBlock?.name || `Block ${conn.destPortIndex}`}</span>
                        </div>
                     </li>
                   );

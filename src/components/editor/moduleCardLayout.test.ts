@@ -1,6 +1,22 @@
 import { layoutModuleCards } from './moduleCardLayout';
 
 describe('module card visibility', () => {
+  it('places sources left and outputs right regardless of module order, retaining manual placements', () => {
+    const cards = [
+      { id: 'out', width: 240, height: 220, role: 'output' as const },
+      { id: 'effect', width: 240, height: 500, role: 'processor' as const },
+      { id: 'audio-in', width: 240, height: 180, role: 'source' as const },
+      { id: 'cv-in', width: 240, height: 260, role: 'source' as const },
+    ];
+    const positions = layoutModuleCards(cards);
+    expect(positions['audio-in'].x).toBeLessThan(positions.effect.x);
+    expect(positions['cv-in'].x).toBe(positions['audio-in'].x);
+    expect(positions['cv-in'].y).toBeGreaterThanOrEqual(positions['audio-in'].y + 180);
+    expect(positions.effect.x).toBeLessThan(positions.out.x);
+    const manual = { x: -400, y: 900 };
+    expect(layoutModuleCards(cards.map(card => ({ ...card, position: card.id === 'out' ? manual : positions[card.id] }))).out).toEqual(manual);
+  });
+
   it('packs around a tall card using measured sizes, without hiding shorter cards', () => {
     const cards = Array.from({ length: 34 }, (_, i) => ({
       id: String(i), width: 240, height: i === 0 ? 2100 : 180 + (i % 4) * 90,

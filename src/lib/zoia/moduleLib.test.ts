@@ -1,4 +1,4 @@
-import { BlockDefinition, getModuleDefinition, getSamplerSampleFile, MODULE_DEFINITIONS } from './moduleLib';
+import { BlockDefinition, getModuleDefinition, getSamplerSampleFile, getModuleBlocks, getModuleBlock, MODULE_DEFINITIONS } from './moduleLib';
 import { Module } from './types';
 
 const FIRMWARE_OPTION_COUNTS = [
@@ -65,6 +65,9 @@ describe('firmware 5.41 module catalog', () => {
         if (activeBlocks.length < definition.minBlocks || activeBlocks.length > definition.maxBlocks) {
           throw new Error(`${context} produced ${activeBlocks.length} blocks; expected ${definition.minBlocks}-${definition.maxBlocks}`);
         }
+        if (new Set(activeBlocks.map(block => block.firmwareId)).size !== activeBlocks.length) {
+          throw new Error(`${context} produced duplicate firmware IDs`);
+        }
 
         const parameterIndices = activeBlocks
           .filter(block => block.hasParameter)
@@ -79,6 +82,23 @@ describe('firmware 5.41 module catalog', () => {
 });
 
 describe('dynamic firmware layouts', () => {
+  it('keeps firmware IDs independent of visible positions and optional controls', () => {
+    const ids = (typeId: number, options: number[]) => getModuleBlocks({ typeId, options }).map(block => block.firmwareId);
+    expect(ids(7, [0])).toEqual([0, 2, 3]);
+    expect(ids(7, [1])).toEqual([0, 1, 2, 3, 4]);
+    expect(ids(13, [0, 0, 0, 0, 0])).toEqual([0, 1, 4]);
+    expect(ids(22, [0])).toEqual([0, 1, 8]);
+    expect(ids(16, [25])).toEqual([...Array.from({ length: 25 }, (_, i) => i), 28, 25, 26, 27]);
+    expect(ids(4, [0, 0, 0, 0, 0, 0])).toEqual([0, 32, 34]);
+    expect(ids(20, [0, 1, 0, 0, 0, 0, 0, 0])).toEqual([0, 1, 4, 5]);
+    expect(ids(76, [0, 0, 0])).toEqual([0, 2, 16, 17, 32]);
+    expect(getModuleBlock({ typeId: 7, options: [0] }, 3)?.name).toBe('audio out 1');
+    expect(getModuleBlock({ typeId: 102, options: [0, 0, 0, 0, 0, 0] }, 11)).toMatchObject({
+      name: 'audio out R', inactive: true, hasParameter: false,
+    });
+    expect(getModuleBlock({ typeId: 102, options: [0, 0, 0, 0, 0, 0] }, 999)).toBeUndefined();
+  });
+
   it('supports firmware 4 sequencer pages and block counts', () => {
     expect(blockNames(4, [0, 0, 0, 0, 0, 0])).toEqual([
       'step 1', 'gate in', 'out track 1'

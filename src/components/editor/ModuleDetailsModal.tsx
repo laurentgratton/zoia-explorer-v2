@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePatchStore } from '@/store/patchStore';
-import { getModuleDefinition, getSamplerSampleFile } from '@/lib/zoia/moduleLib';
+import { getModuleDefinition, getSamplerSampleFile, getModuleBlocks, getModuleBlock } from '@/lib/zoia/moduleLib';
 import ConnectionPickerModal from './ConnectionPickerModal';
 
 export default function ModuleDetailsModal({ docked = false }: { docked?: boolean }) {
@@ -88,7 +88,7 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
     }
   };
 
-  const blocks = definition?.calcBlocks({blocks: definition.blocks, options: moduleData.options}) || [];
+  const blocks = getModuleBlocks(moduleData);
 
   return (
     <div className={docked ? 'absolute inset-y-0 right-0 z-20 w-80 max-w-full xl:static xl:shrink-0' : 'fixed inset-0 bg-black/50 flex items-center justify-center z-50'} onClick={handleClose}>
@@ -154,14 +154,17 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
                                if (!isNaN(val)) {
                                  const newParams = [...moduleData!.options];
                                  newParams[i] = val;
-                                 if (docked && definition) {
-                                   const nextBlocks = definition.calcBlocks({ blocks: definition.blocks, options: newParams });
-                                   const layoutChanges = nextBlocks.length !== blocks.length || nextBlocks.some((block, index) =>
-                                     block.name !== blocks[index]?.name || block.direction !== blocks[index]?.direction || block.type !== blocks[index]?.type
-                                   );
-                                   const hasStars = patch.starredElements?.some(star => star.type === 'parameter' && star.moduleIndex === moduleData.index);
-                                   if (layoutChanges && (incoming.length || outgoing.length || hasStars)) {
-                                     alert('Disconnect and unstar this module before changing an option that changes its ports. Existing connections and stars use port numbers and could otherwise target the wrong control.');
+                                 if (definition) {
+                                   const nextBlocks = getModuleBlocks({ ...moduleData, options: newParams });
+                                   const referenced = new Set([
+                                     ...incoming.map(c => c.destPortIndex), ...outgoing.map(c => c.sourcePortIndex),
+                                     ...(patch.starredElements ?? []).flatMap(star => star.type === 'parameter' && star.moduleIndex === moduleData.index ? [star.blockIndex] : []),
+                                   ]);
+                                   const removesPort = blocks.some(block => referenced.has(block.firmwareId) && !nextBlocks.some(next =>
+                                     next.firmwareId === block.firmwareId && next.direction === block.direction && next.type === block.type
+                                   ));
+                                   if (removesPort) {
+                                     alert('Disconnect and unstar the affected ports before disabling them. Other port IDs remain unchanged.');
                                      return;
                                    }
                                  }
@@ -192,8 +195,8 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
           <h3 className="text-sm font-bold text-gray-400 uppercase mb-2">Blocks</h3>
           <div className="space-y-1">
           {blocks.map((block, i) => {
-              const starred = isStarredParam(i);
-              const ccVal = getStarredParamCc(i);
+              const starred = isStarredParam(block.firmwareId);
+              const ccVal = getStarredParamCc(block.firmwareId);
               const parameterIndex = block.hasParameter ? blocks.filter(b => b.hasParameter).findIndex(b => b.name === block.name) : -1;
               return (
               <div key={i} className="flex items-center gap-2 justify-between bg-gray-900/50 p-1 rounded">
@@ -221,12 +224,12 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
                                 max="128"
                                 className="w-12 bg-gray-800 border border-gray-700 rounded px-1 text-xs text-right"
                                 value={getCcDisplayValue(ccVal)}
-                                onChange={(e) => handleCcChange(e.target.value, (val) => setStarredParameterCc(moduleData.index, i, val))}
+                                onChange={(e) => handleCcChange(e.target.value, (val) => setStarredParameterCc(moduleData.index, block.firmwareId, val))}
                             />
                         </div>
                     )}
                     <button 
-                        onClick={() => toggleStarParameter(moduleData.index, i)}
+                        onClick={() => toggleStarParameter(moduleData.index, block.firmwareId)}
                         className={`text-lg leading-none ${starred ? 'text-yellow-400' : 'text-gray-600 hover:text-gray-400'}`}
                     >
                         ★
@@ -271,9 +274,9 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
                           >
                               {srcName}
                           </span>
-                          <span className="text-gray-500"> : {blocks[c.destPortIndex]?.name || `Block ${c.destPortIndex}`}</span>
+                          <span className="text-gray-500"> : {getModuleBlock(moduleData, c.destPortIndex)?.name || `Block ${c.destPortIndex}`}</span>
                           <span className="text-gray-600 mx-1">←</span>
-                          <span className="text-gray-500">Src Block {c.sourcePortIndex + 1}</span>
+                          <span className="text-gray-500">{srcMod && getModuleBlock(srcMod, c.sourcePortIndex)?.name || `Src Block ${c.sourcePortIndex}`}</span>
                           <div className="flex items-center gap-1 ml-2 bg-gray-800 px-1 rounded border border-gray-800 hover:border-gray-600 transition-colors">
                               <input 
                                   type="range" 
@@ -343,7 +346,7 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
                   return (
                     <li key={i} className="text-xs bg-gray-900 p-2 rounded border border-gray-700 flex items-center justify-between gap-2">
                       <div className="flex-1 flex flex-wrap items-center gap-1">
-                          <span className="text-gray-500">{blocks[c.sourcePortIndex]?.name || `Block ${c.sourcePortIndex}`}</span>
+                          <span className="text-gray-500">{getModuleBlock(moduleData, c.sourcePortIndex)?.name || `Block ${c.sourcePortIndex}`}</span>
                           <span className="text-gray-600 mx-1">→</span>
                           <span 
                               className="text-gray-300 hover:text-white hover:underline cursor-pointer"
@@ -351,7 +354,7 @@ export default function ModuleDetailsModal({ docked = false }: { docked?: boolea
                           >
                               {destName}
                           </span>
-                          <span className="text-gray-500"> : Dest Block {c.destPortIndex + 1}</span>
+                          <span className="text-gray-500"> : {destMod && getModuleBlock(destMod, c.destPortIndex)?.name || `Dest Block ${c.destPortIndex}`}</span>
                           <div className="flex items-center gap-1 ml-2 bg-gray-800 px-1 rounded border border-gray-800 hover:border-gray-600 transition-colors">
                               <input 
                                   type="range" 

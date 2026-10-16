@@ -2,6 +2,7 @@ import {Module} from "@/lib/zoia/types";
 
 export interface BlockDefinition {
   name: string;
+  firmwareId?: number; // Stable wire ID; never the position in calcBlocks' visible array.
   direction: number; // 0: input, 1: output
   type: number; // 0: audio, 1: cv
   hasParameter?: boolean;
@@ -873,15 +874,77 @@ export const MODULE_DEFINITIONS: Record<number, ModuleDefinition> = {
   109: { typeId: 109, name: "MIDI Pressure Out", category: "Interface", blocks: [{"name": "pressure out", "direction": 0, "hasParameter": true, "parameterIndex": 0, "parameterMax": 65535, "type": 1}], options: [{"name": "midi channel", "values": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]}], minBlocks: 1, maxBlocks: 1, "calcBlocks": (d) => {return d.blocks;} }
 };
 
+// Firmware positions from darosh/zoian lib/spec/modules.ts and zoia_lib's
+// ModuleIndex schema, checked against hardware patch connection records.
+// These are IDs for our catalog templates, not visible positions. Most catalogs
+// are already in firmware order; these explicitly cover reordered/reserved slots.
+const firmwareTemplateIds: Record<number, number[]> = {
+  4: [0, 32, 33, 42, 43, 34], // Sequencer key inputs were appended after outputs.
+  5: [0, 1, 2, 4, 5, 3],
+  11: [0, 1, 3, 2],
+  15: [1],
+  16: [0, 25, 26, 27],
+  22: [0, 8],
+  23: [0, 1, 2, 3, 4, 5, 8, 6, 7],
+  25: [0, 1, 3, 6, 7, 2, 4, 5],
+  28: [0, 2, 3, 1],
+  29: [0, 1, 3, 7, 8, 4, 9, 2, 5, 6],
+  30: [0, 1, 2, 9, 3, 4, 5, 7, 8, 6],
+  31: [0, 16, 17],
+  32: [0, 1, 2],
+  33: [0, 16, 17],
+  34: [0, 1, 2],
+  40: [0, 1, 2, 3, 4, 7, 5, 6],
+  43: [0, 1, 2, 5, 3, 4, 6, 7, 8, 9],
+  48: [0, 1, 3, 4, 2],
+  49: [0, 1, 2, 4, 5, 3],
+  53: [0, 0, 1, 3, 2, 4, 5],
+  64: [0, 1, 0, 4, 1, 5, 2, 3, 3, 6],
+  74: [0, 1, 2, 6, 7, 3, 4, 5],
+  76: [0, 16, 24, 32, 33],
+  97: [1], 98: [1],
+  105: [0, 38, 39],
+};
+
 for (const definition of Object.values(MODULE_DEFINITIONS)) {
+  definition.blocks.forEach((block, index) => {
+    block.firmwareId = firmwareTemplateIds[definition.typeId]?.[index] ?? index;
+  });
   const calcBlocks = definition.calcBlocks;
   definition.calcBlocks = input => {
     let parameterIndex = 0;
-    return calcBlocks(input).map(block => block.hasParameter
-      ? {...block, parameterIndex: parameterIndex++}
-      : block
-    );
+    const occurrences = new Map<number, number>();
+    return calcBlocks(input).map(block => {
+      const base = block.firmwareId!;
+      const ordinal = occurrences.get(base) ?? 0;
+      occurrences.set(base, ordinal + 1);
+      let firmwareId = base;
+      const type = definition.typeId;
+      if (type === 4 && (base === 0 || base === 34)) firmwareId += ordinal;
+      if (type === 16 && base === 0) firmwareId = ordinal < 25 ? ordinal : ordinal + 3;
+      if (type === 20) firmwareId += ordinal * 4;
+      if ([22, 31, 33, 105].includes(type) && base === 0) firmwareId += ordinal;
+      if ([32, 34].includes(type) && base === 2) firmwareId += ordinal;
+      if (type === 76 && base < 32) firmwareId += base === 0 && input.options[1] === 0 ? ordinal * 2 : ordinal;
+      return { ...block, firmwareId, ...(block.hasParameter ? { parameterIndex: parameterIndex++ } : {}) };
+    });
   };
+}
+
+export type ResolvedBlock = BlockDefinition & { firmwareId: number; inactive?: boolean };
+
+export function getModuleBlocks(module: Pick<Module, 'typeId' | 'options'>): ResolvedBlock[] {
+  const definition = getModuleDefinition(module.typeId);
+  return (definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? []) as ResolvedBlock[];
+}
+
+export function getModuleBlock(module: Pick<Module, 'typeId' | 'options'>, firmwareId: number): ResolvedBlock | undefined {
+  const active = getModuleBlocks(module).find(block => block.firmwareId === firmwareId);
+  if (active) return active;
+  // Preserve known saved endpoints absent from the current option layout (e.g.
+  // older Sampler patches). They may be displayed, but never offered for new wiring.
+  const saved = getModuleDefinition(module.typeId)?.blocks.find(block => block.firmwareId === firmwareId);
+  return saved ? { ...saved, firmwareId, inactive: true, hasParameter: false, parameterIndex: undefined } : undefined;
 }
 
 export function getModuleDefinition(typeId: number): ModuleDefinition | undefined {

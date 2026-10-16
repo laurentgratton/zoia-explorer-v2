@@ -1,8 +1,8 @@
 export interface Connection {
   sourceModuleIndex: number;
-  sourcePortIndex: number;
+  sourcePortIndex: number; // Firmware block ID, not a visible block array index.
   destModuleIndex: number;
-  destPortIndex: number;
+  destPortIndex: number; // Firmware block ID, not a visible block array index.
   strength: number;
 }
 
@@ -31,7 +31,7 @@ export interface Module {
 export interface StarredParameter {
   type: 'parameter';
   moduleIndex: number;
-  blockIndex: number;
+  blockIndex: number; // Firmware block ID, not a parameter value index.
   midiCc?: number;
 }
 

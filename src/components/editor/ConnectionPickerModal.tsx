@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { usePatchStore } from '@/store/patchStore';
-import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getModuleDefinition, getModuleBlocks } from '@/lib/zoia/moduleLib';
 import { Module, Connection } from '@/lib/zoia/types';
 
 interface ConnectionPickerModalProps {
@@ -19,8 +19,8 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
   const localDef = getModuleDefinition(sourceModule.typeId);
   const localBlocks = useMemo(() => {
     if (!localDef) return [];
-    const allBlocks = localDef.calcBlocks({ blocks: localDef.blocks, options: sourceModule.options });
-    return allBlocks.map((b, i) => ({ ...b, index: i })).filter(b => 
+    const allBlocks = getModuleBlocks(sourceModule);
+    return allBlocks.map(b => ({ ...b, index: b.firmwareId })).filter(b =>
       direction === 'input' ? b.direction === 0 : b.direction === 1
     );
   }, [sourceModule, direction, localDef]);
@@ -46,8 +46,9 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
       modsOnPage.forEach(mod => {
         const def = getModuleDefinition(mod.typeId);
         if (!def) return;
-        const blocks = def.calcBlocks({ blocks: def.blocks, options: mod.options });
-        const compatibleBlocks = blocks.map((b, i) => ({ ...b, index: i })).filter(b => b.direction === targetDir);
+        const blocks = getModuleBlocks(mod);
+        const localType = localBlocks.find(block => block.index === selectedLocalBlockIndex)?.type;
+        const compatibleBlocks = blocks.map(b => ({ ...b, index: b.firmwareId })).filter(b => b.direction === targetDir && b.type === localType);
         
         if (compatibleBlocks.length > 0) {
           modulesWithBlocks.push({
@@ -63,7 +64,7 @@ export default function ConnectionPickerModal({ sourceModule, direction, onSelec
     });
     
     return pages;
-  }, [patch, sourceModule, direction]);
+  }, [patch, sourceModule, direction, localBlocks, selectedLocalBlockIndex]);
 
   const handleSelect = (remoteModule: Module, remoteBlockIndex: number) => {
     if (selectedLocalBlockIndex === -1) return;
