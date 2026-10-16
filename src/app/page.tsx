@@ -54,7 +54,7 @@ export default function Home() {
         if (usePatchStore.getState().pendingPatch !== next) return;
         usePatchStore.getState().setPatch(parsePatch(entry.data), { ...next.source, loadedRevision: folder.revision }, entry.data);
       } else {
-        usePatchStore.getState().setPatch(next.patch, null, next.data);
+        usePatchStore.getState().setPatch(next.patch, null, next.data, next.libraryId);
       }
       setArea('editor');
     } catch (cause) { setPendingError(cause instanceof Error ? cause.message : 'Could not open the requested patch.'); }

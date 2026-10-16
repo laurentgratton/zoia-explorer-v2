@@ -15,7 +15,8 @@ describe('patchStore', () => {
 
   it('keeps dirty drafts when opening another patch and only marks the saved snapshot clean', () => {
     const store = usePatchStore.getState();
-    store.setPatch(mockPatch);
+    store.requestPatch(mockPatch, null, null, 'library-original');
+    expect(usePatchStore.getState().libraryId).toBe('library-original');
     store.setActivePage(1);
     store.setModuleCanvasPosition(0, { x: 120, y: 240 });
     expect(isPatchDirty(usePatchStore.getState())).toBe(false);
@@ -23,17 +24,21 @@ describe('patchStore', () => {
     expect(isPatchDirty(usePatchStore.getState())).toBe(false);
     store.renamePatch('Edited');
     const snapshot = usePatchStore.getState().patch!;
-    store.requestPatch(mockPatch);
+    store.requestPatch(mockPatch, null, null, 'library-next');
     expect(usePatchStore.getState().patch?.name).toBe('Edited');
     expect(usePatchStore.getState().pendingPatch?.patch).toBe(mockPatch);
+    expect(usePatchStore.getState().pendingPatch?.libraryId).toBe('library-next');
+    expect(usePatchStore.getState().libraryId).toBe('library-original');
     store.renamePatch('Edited again');
     store.markSaved(snapshot, new ArrayBuffer(0), { folderId: 'set', entryId: 'entry', loadedRevision: 2 });
+    expect(usePatchStore.getState().libraryId).toBe('library-original');
     expect(isPatchDirty(usePatchStore.getState())).toBe(true);
     store.setModuleCanvasPosition(0, { x: 300, y: 400 });
     store.setPatch(mockPatch);
     expect(usePatchStore.getState().moduleCanvasPositions).toEqual({});
     expect(isPatchDirty(usePatchStore.getState())).toBe(false);
     expect(usePatchStore.getState().source).toBeNull();
+    expect(usePatchStore.getState().libraryId).toBeNull();
     expect(usePatchStore.getState().pendingPatch).toBeNull();
   });
 

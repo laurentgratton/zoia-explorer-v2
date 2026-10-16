@@ -8,8 +8,7 @@ export default function PatchLibrary() {
   const [patches, setPatches] = useState<StoredPatch[]>([]);
   const [loading, setLoading] = useState(true);
   const requestPatch = usePatchStore((state) => state.requestPatch);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const activePatch = usePatchStore((state) => state.patch); 
+  const source = usePatchStore((state) => state.source);
 
   const loadPatches = useCallback(async () => {
     setLoading(true);
@@ -27,12 +26,12 @@ export default function PatchLibrary() {
 
   useEffect(() => {
     loadPatches();
-  }, [loadPatches]);
+  }, [loadPatches, source]);
 
   const handleLoad = (stored: StoredPatch) => {
     try {
       const patch = parsePatch(stored.data);
-      requestPatch(patch, null, stored.data);
+      requestPatch(patch, null, stored.data, stored.id);
     } catch (err) {
       console.error("Failed to parse stored patch", err);
       alert("Failed to load patch. It might be corrupted.");

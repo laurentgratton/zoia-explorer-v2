@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { applyFolderOperation, EditorSource, FolderOperation, PatchFolder, readFolderEntry } from '@/lib/zoia/folders';
+import { applyFolderOperation, EditorSource, FolderOperation, PatchFolder, patchFilename, readFolderEntry } from '@/lib/zoia/folders';
 
 export interface StoredPatch {
   id: string;
@@ -98,16 +98,23 @@ export async function addFolder(folder: PatchFolder): Promise<void> {
 }
 
 // Revision checking and the write share a transaction, including across browser tabs.
-async function writeFolder(id: string, expectedRevision: number, change: (folder: PatchFolder) => PatchFolder | null) {
+async function writeFolder(id: string, expectedRevision: number, change: (folder: PatchFolder) => PatchFolder | null, libraryRename?: { id: string; name: string }) {
   const db = await getDB();
-  const tx = db.transaction('folders', 'readwrite');
+  const tx = db.transaction(libraryRename ? ['folders', 'patches'] : ['folders'], 'readwrite');
+  const folders = tx.objectStore('folders');
   try {
-    const folder = await tx.store.get(id);
+    const folder = await folders.get(id);
     if (!folder) throw new Error('This folder no longer exists. Refresh the folder list.');
     if (folder.revision !== expectedRevision) throw new Error('This folder changed. Refresh and review your action before trying again.');
     const updated = change(folder);
-    if (updated) await tx.store.put(updated);
-    else await tx.store.delete(id);
+    if (updated) await folders.put(updated);
+    else await folders.delete(id);
+    if (libraryRename) {
+      const patches = tx.objectStore('patches');
+      const patch = await patches.get(libraryRename.id);
+      // A deleted library copy must not be recreated by saving its open draft.
+      if (patch) await patches.put({ ...patch, name: libraryRename.name });
+    }
     await tx.done;
     return updated;
   } catch (error) {
@@ -125,7 +132,7 @@ export async function deleteFolder(id: string, revision: number): Promise<void> 
   await writeFolder(id, revision, () => null);
 }
 
-export async function saveFolderPatch(id: string, revision: number, slot: number, mode: 'replace' | 'insert', data: ArrayBuffer, source: EditorSource | null): Promise<PatchFolder> {
+export async function saveFolderPatch(id: string, revision: number, slot: number, mode: 'replace' | 'insert', data: ArrayBuffer, source: EditorSource | null, libraryId?: string | null): Promise<PatchFolder> {
   const entry = readFolderEntry(data);
   return (await writeFolder(id, revision, folder => {
     if (source?.folderId === id) {
@@ -141,5 +148,5 @@ export async function saveFolderPatch(id: string, revision: number, slot: number
       }
     }
     return applyFolderOperation(folder, { type: 'place', slot, entry, mode });
-  }))!;
+  }, libraryId ? { id: libraryId, name: patchFilename(slot, entry.name) } : undefined))!;
 }

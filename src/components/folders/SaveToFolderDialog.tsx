@@ -68,6 +68,7 @@ export default function SaveToFolderDialog({
         mode,
         data,
         state.source,
+        state.libraryId,
       );
       state.markSaved(snapshot, data, {
         folderId: saved.id,

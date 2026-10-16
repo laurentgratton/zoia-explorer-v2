@@ -7,6 +7,7 @@ interface PendingPatch {
   patch: Patch;
   source: EditorSource | null;
   data: ArrayBuffer | null;
+  libraryId: string | null;
 }
 
 interface PatchState {
@@ -14,8 +15,9 @@ interface PatchState {
   baseline: Patch | null;
   savedData: ArrayBuffer | null;
   source: EditorSource | null;
+  libraryId: string | null;
   pendingPatch: PendingPatch | null;
-  requestPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null) => void;
+  requestPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null, libraryId?: string | null) => void;
   cancelPendingPatch: () => void;
   markSaved: (snapshot: Patch, data: ArrayBuffer, source: EditorSource) => void;
   activePage: number;
@@ -24,7 +26,7 @@ interface PatchState {
   moduleCanvasPositions: Record<number, { x: number; y: number }>;
   setModuleCanvasPosition: (moduleIndex: number, position: { x: number; y: number }) => void;
   resetModuleCanvasPositions: () => void;
-  setPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null) => void;
+  setPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null, libraryId?: string | null) => void;
   setActivePage: (page: number) => void;
   toggleSystemModules: () => void;
   setSelectedModuleIndex: (index: number | null) => void;
@@ -56,10 +58,11 @@ export const usePatchStore = create<PatchState>((set, get) => ({
   baseline: null,
   savedData: null,
   source: null,
+  libraryId: null,
   pendingPatch: null,
-  requestPatch: (patch, source = null, data = null) => {
-    if (isPatchDirty(get())) set({ pendingPatch: { patch, source, data } });
-    else get().setPatch(patch, source, data);
+  requestPatch: (patch, source = null, data = null, libraryId = null) => {
+    if (isPatchDirty(get())) set({ pendingPatch: { patch, source, data, libraryId } });
+    else get().setPatch(patch, source, data, libraryId);
   },
   cancelPendingPatch: () => set({ pendingPatch: null }),
   markSaved: (snapshot, data, source) => set({ baseline: snapshot, savedData: data, source }),
@@ -71,11 +74,11 @@ export const usePatchStore = create<PatchState>((set, get) => ({
     moduleCanvasPositions: { ...state.moduleCanvasPositions, [moduleIndex]: position },
   })),
   resetModuleCanvasPositions: () => set({ moduleCanvasPositions: {} }),
-  setPatch: (patch, source = null, data = null) => set({ patch, baseline: patch, savedData: data, source, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
+  setPatch: (patch, source = null, data = null, libraryId = null) => set({ patch, baseline: patch, savedData: data, source, libraryId, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   setActivePage: (page) => set({ activePage: page }),
   toggleSystemModules: () => set((state) => ({ showSystemModules: hasEuroModules(state?.patch?.modules) ? !state.showSystemModules : false })),
   setSelectedModuleIndex: (index) => set({ selectedModuleIndex: index }),
-  clearPatch: () => set({ patch: null, baseline: null, savedData: null, source: null, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
+  clearPatch: () => set({ patch: null, baseline: null, savedData: null, source: null, libraryId: null, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   updateModulePosition: (moduleIndex, gridPosition) => set((state) => {
     if (!state.patch) return {};
     const newModules = state.patch.modules.map((m) =>
