@@ -10,6 +10,7 @@ import { getModuleColor } from '@/lib/preview/previewModel';
 import type { Module } from '@/lib/zoia/types';
 import { usePatchStore } from '@/store/patchStore';
 import ModuleDetailsModal from './ModuleDetailsModal';
+import { layoutModuleCards } from './moduleCardLayout';
 
 type CardData = {
   module: Module;
@@ -142,6 +143,7 @@ function CanvasControls() {
 
 export default function ModuleCanvas() {
   const [dimensions, setDimensions] = useState<Record<string, { width: number; height: number }>>({});
+  const [dragging, setDragging] = useState(false);
   const patch = usePatchStore(s => s.patch);
   const selectedModuleIndex = usePatchStore(s => s.selectedModuleIndex);
   const selectModule = usePatchStore(s => s.setSelectedModuleIndex);
@@ -156,11 +158,14 @@ export default function ModuleCanvas() {
       const definition = getModuleDefinition(module.typeId);
       return [module.index, definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? []];
     }));
-    const columns = Math.max(3, Math.ceil(Math.sqrt(patch.modules.length)));
-    const nodes: CardNode[] = patch.modules.map((module, layoutIndex) => {
-      const position = { x: 40 + (layoutIndex % columns) * 400, y: 60 + Math.floor(layoutIndex / columns) * 360 };
+    const layout = layoutModuleCards(patch.modules.map(module => ({
+      id: String(module.index), width: dimensions[module.index]?.width ?? 240,
+      height: dimensions[module.index]?.height ?? 280, position: positions[module.index],
+    })));
+    const nodes: CardNode[] = patch.modules.map(module => {
       return {
-        id: String(module.index), type: 'moduleCard', position: positions[module.index] ?? position,
+        id: String(module.index), type: 'moduleCard',
+        position: dragging ? positions[module.index] ?? layout[module.index] : layout[module.index],
         measured: dimensions[module.index],
         selected: selectedModuleIndex === module.index,
         dragHandle: '.module-card-heading',
@@ -194,14 +199,16 @@ export default function ModuleCanvas() {
       }];
     });
     return { nodes, edges, unresolvedCount };
-  }, [patch, positions, selectedModuleIndex, dimensions]);
+  }, [patch, positions, selectedModuleIndex, dimensions, dragging]);
 
   useEffect(() => {
-    // Keep the initial layout stable when cables are added, pages change, or views switch.
+    // Wait for actual card sizes before saving layout; don't fight the pointer during a drag.
+    if (dragging || nodes.some(node => !dimensions[node.id])) return;
     nodes.forEach(node => {
-      if (!positions[Number(node.id)]) setPosition(Number(node.id), node.position);
+      const saved = positions[Number(node.id)];
+      if (saved?.x !== node.position.x || saved?.y !== node.position.y) setPosition(Number(node.id), node.position);
     });
-  }, [nodes, positions, setPosition]);
+  }, [nodes, positions, setPosition, dimensions, dragging]);
 
   function validConnection(connection: FlowConnection | Edge) {
     if (!patch || connection.sourceHandle == null || connection.targetHandle == null) return false;
@@ -225,6 +232,8 @@ export default function ModuleCanvas() {
       <div className="relative min-w-0 flex-1">
         <ReactFlow<CardNode>
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
+          onNodeDragStart={() => setDragging(true)}
+          onNodeDragStop={() => setDragging(false)}
           onNodesChange={changes => changes.forEach(change => {
             if (change.type === 'position' && change.position) setPosition(Number(change.id), change.position);
             if (change.type === 'dimensions' && change.dimensions) {
@@ -253,7 +262,7 @@ export default function ModuleCanvas() {
         </ReactFlow>
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-3 text-xs pointer-events-none">
           <span className="rounded bg-gray-900/95 px-3 py-2 text-gray-300">○ Audio · □ CV · Drag a socket to connect</span>
-          {unresolvedCount > 0 && <span role="status" className="rounded bg-gray-900 px-3 py-2 text-amber-300">{unresolvedCount} unresolved connections — inspect module details</span>}
+          {unresolvedCount > 0 && <span role="status" className="rounded bg-gray-900 px-3 py-2 text-amber-300">{unresolvedCount} connections hidden: port IDs do not match editor metadata. Port labels may be incorrect.</span>}
         </div>
         {!nodes.length && <p className="absolute top-20 left-6 text-sm text-gray-400">No modules in this patch. Add one from the Modules library.</p>}
         <p className="absolute bottom-4 left-16 right-4 text-[11px] text-gray-400 pointer-events-none">Card layout is view-only. Hardware grid unchanged.</p>
