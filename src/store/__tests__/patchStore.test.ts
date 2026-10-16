@@ -17,6 +17,9 @@ describe('patchStore', () => {
     const store = usePatchStore.getState();
     store.setPatch(mockPatch);
     store.setActivePage(1);
+    store.setModuleCanvasPosition(0, { x: 120, y: 240 });
+    expect(isPatchDirty(usePatchStore.getState())).toBe(false);
+    store.resetModuleCanvasPositions();
     expect(isPatchDirty(usePatchStore.getState())).toBe(false);
     store.renamePatch('Edited');
     const snapshot = usePatchStore.getState().patch!;
@@ -26,7 +29,9 @@ describe('patchStore', () => {
     store.renamePatch('Edited again');
     store.markSaved(snapshot, new ArrayBuffer(0), { folderId: 'set', entryId: 'entry', loadedRevision: 2 });
     expect(isPatchDirty(usePatchStore.getState())).toBe(true);
+    store.setModuleCanvasPosition(0, { x: 300, y: 400 });
     store.setPatch(mockPatch);
+    expect(usePatchStore.getState().moduleCanvasPositions).toEqual({});
     expect(isPatchDirty(usePatchStore.getState())).toBe(false);
     expect(usePatchStore.getState().source).toBeNull();
     expect(usePatchStore.getState().pendingPatch).toBeNull();
