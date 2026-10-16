@@ -1,16 +1,30 @@
 import { create } from 'zustand';
 import {Patch, Connection, StarredParameter, StarredConnection} from '@/lib/zoia/types';
 import {hasEuroModules} from "@/lib/zoia/moduleLib";
+import type { EditorSource } from '@/lib/zoia/folders';
+
+interface PendingPatch {
+  patch: Patch;
+  source: EditorSource | null;
+  data: ArrayBuffer | null;
+}
 
 interface PatchState {
   patch: Patch | null;
+  baseline: Patch | null;
+  savedData: ArrayBuffer | null;
+  source: EditorSource | null;
+  pendingPatch: PendingPatch | null;
+  requestPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null) => void;
+  cancelPendingPatch: () => void;
+  markSaved: (snapshot: Patch, data: ArrayBuffer, source: EditorSource) => void;
   activePage: number;
   showSystemModules: boolean;
   selectedModuleIndex: number | null;
   moduleCanvasPositions: Record<number, { x: number; y: number }>;
   setModuleCanvasPosition: (moduleIndex: number, position: { x: number; y: number }) => void;
   resetModuleCanvasPositions: () => void;
-  setPatch: (patch: Patch) => void;
+  setPatch: (patch: Patch, source?: EditorSource | null, data?: ArrayBuffer | null) => void;
   setActivePage: (page: number) => void;
   toggleSystemModules: () => void;
   setSelectedModuleIndex: (index: number | null) => void;
@@ -33,8 +47,22 @@ interface PatchState {
   addPage: (name: string) => void;
 }
 
-export const usePatchStore = create<PatchState>((set) => ({
+export function isPatchDirty(state: Pick<PatchState, 'patch' | 'baseline'>): boolean {
+  return state.patch !== null && JSON.stringify(state.patch) !== JSON.stringify(state.baseline);
+}
+
+export const usePatchStore = create<PatchState>((set, get) => ({
   patch: null,
+  baseline: null,
+  savedData: null,
+  source: null,
+  pendingPatch: null,
+  requestPatch: (patch, source = null, data = null) => {
+    if (isPatchDirty(get())) set({ pendingPatch: { patch, source, data } });
+    else get().setPatch(patch, source, data);
+  },
+  cancelPendingPatch: () => set({ pendingPatch: null }),
+  markSaved: (snapshot, data, source) => set({ baseline: snapshot, savedData: data, source }),
   activePage: 0,
   showSystemModules: false,
   selectedModuleIndex: null,
@@ -43,11 +71,11 @@ export const usePatchStore = create<PatchState>((set) => ({
     moduleCanvasPositions: { ...state.moduleCanvasPositions, [moduleIndex]: position },
   })),
   resetModuleCanvasPositions: () => set({ moduleCanvasPositions: {} }),
-  setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
+  setPatch: (patch, source = null, data = null) => set({ patch, baseline: patch, savedData: data, source, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   setActivePage: (page) => set({ activePage: page }),
   toggleSystemModules: () => set((state) => ({ showSystemModules: hasEuroModules(state?.patch?.modules) ? !state.showSystemModules : false })),
   setSelectedModuleIndex: (index) => set({ selectedModuleIndex: index }),
-  clearPatch: () => set({ patch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
+  clearPatch: () => set({ patch: null, baseline: null, savedData: null, source: null, pendingPatch: null, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   updateModulePosition: (moduleIndex, gridPosition) => set((state) => {
     if (!state.patch) return {};
     const newModules = state.patch.modules.map((m) =>

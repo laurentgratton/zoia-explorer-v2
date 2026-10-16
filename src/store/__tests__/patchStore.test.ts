@@ -1,4 +1,4 @@
-import { usePatchStore } from '../patchStore';
+import { isPatchDirty, usePatchStore } from '../patchStore';
 import { Patch } from '@/lib/zoia/types';
 
 describe('patchStore', () => {
@@ -12,6 +12,25 @@ describe('patchStore', () => {
     connections: [],
     pageNames: ['Page 0', 'Page 1'],
   };
+
+  it('keeps dirty drafts when opening another patch and only marks the saved snapshot clean', () => {
+    const store = usePatchStore.getState();
+    store.setPatch(mockPatch);
+    store.setActivePage(1);
+    expect(isPatchDirty(usePatchStore.getState())).toBe(false);
+    store.renamePatch('Edited');
+    const snapshot = usePatchStore.getState().patch!;
+    store.requestPatch(mockPatch);
+    expect(usePatchStore.getState().patch?.name).toBe('Edited');
+    expect(usePatchStore.getState().pendingPatch?.patch).toBe(mockPatch);
+    store.renamePatch('Edited again');
+    store.markSaved(snapshot, new ArrayBuffer(0), { folderId: 'set', entryId: 'entry', loadedRevision: 2 });
+    expect(isPatchDirty(usePatchStore.getState())).toBe(true);
+    store.setPatch(mockPatch);
+    expect(isPatchDirty(usePatchStore.getState())).toBe(false);
+    expect(usePatchStore.getState().source).toBeNull();
+    expect(usePatchStore.getState().pendingPatch).toBeNull();
+  });
 
   it('should rename the patch', () => {
     usePatchStore.getState().setPatch(mockPatch);
