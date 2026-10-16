@@ -126,7 +126,7 @@ export default function Home() {
                             </button>
                           ))}
                         </div>
-                        <PageSelector />
+                        {editorView === 'grid' && <PageSelector />}
                       </>
                     )}
                  </div>

@@ -5,8 +5,8 @@ import {
   type Node, type NodeProps, type Edge, type Connection as FlowConnection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { getModuleDefinition, hasEuroModules } from '@/lib/zoia/moduleLib';
-import { getModuleColor, getPreviewPageName } from '@/lib/preview/previewModel';
+import { getModuleDefinition } from '@/lib/zoia/moduleLib';
+import { getModuleColor } from '@/lib/preview/previewModel';
 import type { Module } from '@/lib/zoia/types';
 import { usePatchStore } from '@/store/patchStore';
 import ModuleDetailsModal from './ModuleDetailsModal';
@@ -14,17 +14,14 @@ import ModuleDetailsModal from './ModuleDetailsModal';
 type CardData = {
   module: Module;
   connectedPorts: number[];
-  remote: boolean;
-  pageName: string;
 };
 type CardNode = Node<CardData, 'moduleCard'>;
 
 function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
-  const { module, connectedPorts, remote, pageName } = data;
+  const { module, connectedPorts } = data;
   const [expanded, setExpanded] = useState(false);
   const updateInternals = useUpdateNodeInternals();
   const selectModule = usePatchStore(s => s.setSelectedModuleIndex);
-  const setActivePage = usePatchStore(s => s.setActivePage);
   const updateParameters = usePatchStore(s => s.updateModuleParameters);
   const definition = getModuleDefinition(module.typeId);
   const blocks = definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? [];
@@ -52,12 +49,6 @@ function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
         </button>
         <div className="text-[11px] text-gray-400 mt-1">{definition?.name ?? `Type ${module.typeId}`} · #{module.index + 1}</div>
       </div>
-      {remote && definition?.category === 'System' && <p className="px-4 py-2 text-xs text-sky-300">System · connected endpoint</p>}
-      {remote && definition?.category !== 'System' && (
-        <button className="nodrag w-full px-4 py-2 text-left text-xs text-sky-300 hover:bg-gray-800" onClick={event => { event.stopPropagation(); setActivePage(module.page); selectModule(null); }}>
-          Open {pageName} ↗
-        </button>
-      )}
       <div className="py-2">
         {shown.map(block => (
           <div key={block.index} className="relative px-4 py-1.5 text-xs">
@@ -116,20 +107,19 @@ function FitCanvas() {
   const { fitView } = useReactFlow();
   const width = useStore(state => state.width);
   const height = useStore(state => state.height);
+  const measured = useStore(state => state.nodeLookup.size > 0 &&
+    Array.from(state.nodeLookup.values()).every(node => node.measured.width && node.measured.height));
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      if (width > 0 && height > 0) void fitView({ padding: 0.18, maxZoom: 1 });
+      if (measured && width > 0 && height > 0) void fitView({ padding: 0.18, maxZoom: 1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [width, height, fitView]);
+  }, [width, height, measured, fitView]);
   return null;
 }
 
 export default function ModuleCanvas() {
   const patch = usePatchStore(s => s.patch);
-  const activePage = usePatchStore(s => s.activePage);
-  const showSystemModules = usePatchStore(s => s.showSystemModules);
-  const toggleSystemModules = usePatchStore(s => s.toggleSystemModules);
   const selectedModuleIndex = usePatchStore(s => s.selectedModuleIndex);
   const selectModule = usePatchStore(s => s.setSelectedModuleIndex);
   const positions = usePatchStore(s => s.moduleCanvasPositions);
@@ -138,24 +128,13 @@ export default function ModuleCanvas() {
 
   const { nodes, edges, unresolvedCount } = useMemo(() => {
     if (!patch) return { nodes: [], edges: [], unresolvedCount: 0 };
-    const localIndices = new Set(patch.modules.filter(module => {
-      const isSystem = getModuleDefinition(module.typeId)?.category === 'System';
-      return isSystem ? showSystemModules : module.page === activePage;
-    }).map(module => module.index));
-    // Include one-hop off-page endpoints so changing pages never hides a cable's destination.
-    const visibleIndices = new Set(localIndices);
-    const connections = patch.connections.map((connection, index) => ({ ...connection, index }))
-      .filter(connection => localIndices.has(connection.sourceModuleIndex) || localIndices.has(connection.destModuleIndex));
-    connections.forEach(connection => {
-      visibleIndices.add(connection.sourceModuleIndex);
-      visibleIndices.add(connection.destModuleIndex);
-    });
+    const connections = patch.connections.map((connection, index) => ({ ...connection, index }));
     const ports = new Map(patch.modules.map(module => {
       const definition = getModuleDefinition(module.typeId);
       return [module.index, definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? []];
     }));
     const columnHeights = [60, 60, 60];
-    const nodes: CardNode[] = patch.modules.filter(module => visibleIndices.has(module.index)).map(module => {
+    const nodes: CardNode[] = patch.modules.map(module => {
       const blocks = ports.get(module.index)!;
       const hasIncoming = connections.some(connection => connection.destModuleIndex === module.index);
       const column = !blocks.some(block => block.direction === 1) ? 2 : !hasIncoming ? 0 : 1;
@@ -171,8 +150,6 @@ export default function ModuleCanvas() {
             ...(connection.sourceModuleIndex === module.index ? [connection.sourcePortIndex] : []),
             ...(connection.destModuleIndex === module.index ? [connection.destPortIndex] : []),
           ]),
-          remote: !localIndices.has(module.index),
-          pageName: getPreviewPageName(patch, module.page),
         },
       };
     });
@@ -197,7 +174,7 @@ export default function ModuleCanvas() {
       }];
     });
     return { nodes, edges, unresolvedCount };
-  }, [patch, activePage, showSystemModules, positions, selectedModuleIndex]);
+  }, [patch, positions, selectedModuleIndex]);
 
   useEffect(() => {
     // Keep the initial layout stable when cables are added, pages change, or views switch.
@@ -227,7 +204,6 @@ export default function ModuleCanvas() {
     <div className="absolute inset-0 flex bg-gray-900" aria-label="Modules view">
       <div className="relative min-w-0 flex-1">
         <ReactFlow<CardNode>
-          key={`${activePage}-${showSystemModules}`}
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
           onNodesChange={changes => changes.forEach(change => {
             if (change.type === 'position' && change.position) setPosition(Number(change.id), change.position);
@@ -252,10 +228,9 @@ export default function ModuleCanvas() {
         </ReactFlow>
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-3 text-xs pointer-events-none">
           <span className="rounded bg-gray-900/95 px-3 py-2 text-gray-300">○ Audio · □ CV · Drag a socket to connect</span>
-          {hasEuroModules(patch.modules) && <button className="pointer-events-auto rounded bg-gray-800 px-3 py-2 text-gray-200" aria-pressed={showSystemModules} onClick={toggleSystemModules}>EURO {showSystemModules ? 'all' : 'linked'}</button>}
           {unresolvedCount > 0 && <span role="status" className="rounded bg-gray-900 px-3 py-2 text-amber-300">{unresolvedCount} unresolved connections — inspect module details</span>}
         </div>
-        {!nodes.length && <p className="absolute top-20 left-6 text-sm text-gray-400">No modules on this page. Add one from the Modules library.</p>}
+        {!nodes.length && <p className="absolute top-20 left-6 text-sm text-gray-400">No modules in this patch. Add one from the Modules library.</p>}
         <p className="absolute bottom-4 left-16 right-4 text-[11px] text-gray-400 pointer-events-none">Card layout is view-only. Hardware grid unchanged.</p>
       </div>
       {selectedModuleIndex !== null && <ModuleDetailsModal docked />}
