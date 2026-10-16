@@ -9,6 +9,7 @@ interface PatchState {
   selectedModuleIndex: number | null;
   moduleCanvasPositions: Record<number, { x: number; y: number }>;
   setModuleCanvasPosition: (moduleIndex: number, position: { x: number; y: number }) => void;
+  resetModuleCanvasPositions: () => void;
   setPatch: (patch: Patch) => void;
   setActivePage: (page: number) => void;
   toggleSystemModules: () => void;
@@ -41,6 +42,7 @@ export const usePatchStore = create<PatchState>((set) => ({
   setModuleCanvasPosition: (moduleIndex, position) => set(state => ({
     moduleCanvasPositions: { ...state.moduleCanvasPositions, [moduleIndex]: position },
   })),
+  resetModuleCanvasPositions: () => set({ moduleCanvasPositions: {} }),
   setPatch: (patch) => set({ patch, activePage: 0, selectedModuleIndex: null, moduleCanvasPositions: {} }),
   setActivePage: (page) => set({ activePage: page }),
   toggleSystemModules: () => set((state) => ({ showSystemModules: hasEuroModules(state?.patch?.modules) ? !state.showSystemModules : false })),

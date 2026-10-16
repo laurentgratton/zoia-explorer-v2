@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Background, BackgroundVariant, Controls, Handle, Position, ReactFlow,
+  Background, BackgroundVariant, Controls, Handle, Panel, Position, ReactFlow,
   useUpdateNodeInternals, useReactFlow, useStore,
   type Node, type NodeProps, type Edge, type Connection as FlowConnection,
 } from '@xyflow/react';
@@ -103,22 +103,45 @@ function ModuleCard({ id, data, selected }: NodeProps<CardNode>) {
 
 const nodeTypes = { moduleCard: ModuleCard };
 
-function FitCanvas() {
+function CanvasControls() {
   const { fitView } = useReactFlow();
+  const resetPositions = usePatchStore(state => state.resetModuleCanvasPositions);
   const width = useStore(state => state.width);
   const height = useStore(state => state.height);
   const measured = useStore(state => state.nodeLookup.size > 0 &&
     Array.from(state.nodeLookup.values()).every(node => node.measured.width && node.measured.height));
+  const fittedSize = useRef<{ width: number; height: number } | null>(null);
+  const fitCanvas = useCallback(() => {
+    void fitView({ padding: 0.18, maxZoom: 1 });
+  }, [fitView]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      if (measured && width > 0 && height > 0) void fitView({ padding: 0.18, maxZoom: 1 });
+      if (!measured || width <= 0 || height <= 0) return;
+      // Node measurements can change during a drag. Only refit when the canvas itself resizes.
+      if (fittedSize.current?.width === width && fittedSize.current.height === height) return;
+      fittedSize.current = { width, height };
+      fitCanvas();
     });
     return () => cancelAnimationFrame(frame);
-  }, [width, height, measured, fitView]);
-  return null;
+  }, [width, height, measured, fitCanvas]);
+  return (
+    <Panel position="top-right">
+      <button
+        className="rounded border border-gray-600 bg-gray-800 px-3 py-2 text-xs text-gray-200 hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-white"
+        title="Replace the card layout without changing the patch"
+        onClick={() => {
+          resetPositions();
+          requestAnimationFrame(fitCanvas);
+        }}
+      >
+        Arrange modules
+      </button>
+    </Panel>
+  );
 }
 
 export default function ModuleCanvas() {
+  const [dimensions, setDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const patch = usePatchStore(s => s.patch);
   const selectedModuleIndex = usePatchStore(s => s.selectedModuleIndex);
   const selectModule = usePatchStore(s => s.setSelectedModuleIndex);
@@ -133,15 +156,12 @@ export default function ModuleCanvas() {
       const definition = getModuleDefinition(module.typeId);
       return [module.index, definition?.calcBlocks({ blocks: definition.blocks, options: module.options }) ?? []];
     }));
-    const columnHeights = [60, 60, 60];
-    const nodes: CardNode[] = patch.modules.map(module => {
-      const blocks = ports.get(module.index)!;
-      const hasIncoming = connections.some(connection => connection.destModuleIndex === module.index);
-      const column = !blocks.some(block => block.direction === 1) ? 2 : !hasIncoming ? 0 : 1;
-      const position = { x: 40 + column * 350, y: columnHeights[column] };
-      columnHeights[column] += 300;
+    const columns = Math.max(3, Math.ceil(Math.sqrt(patch.modules.length)));
+    const nodes: CardNode[] = patch.modules.map((module, layoutIndex) => {
+      const position = { x: 40 + (layoutIndex % columns) * 400, y: 60 + Math.floor(layoutIndex / columns) * 360 };
       return {
         id: String(module.index), type: 'moduleCard', position: positions[module.index] ?? position,
+        measured: dimensions[module.index],
         selected: selectedModuleIndex === module.index,
         dragHandle: '.module-card-heading',
         data: {
@@ -174,7 +194,7 @@ export default function ModuleCanvas() {
       }];
     });
     return { nodes, edges, unresolvedCount };
-  }, [patch, positions, selectedModuleIndex]);
+  }, [patch, positions, selectedModuleIndex, dimensions]);
 
   useEffect(() => {
     // Keep the initial layout stable when cables are added, pages change, or views switch.
@@ -207,6 +227,11 @@ export default function ModuleCanvas() {
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
           onNodesChange={changes => changes.forEach(change => {
             if (change.type === 'position' && change.position) setPosition(Number(change.id), change.position);
+            if (change.type === 'dimensions' && change.dimensions) {
+              const size = change.dimensions;
+              setDimensions(previous => previous[change.id]?.width === size.width && previous[change.id]?.height === size.height
+                ? previous : { ...previous, [change.id]: size });
+            }
           })}
           onNodeClick={(_, node) => selectModule(Number(node.id))}
           onPaneClick={() => selectModule(null)}
@@ -224,7 +249,7 @@ export default function ModuleCanvas() {
         >
           <Background variant={BackgroundVariant.Lines} color="#253041" gap={24} />
           <Controls />
-          <FitCanvas />
+          <CanvasControls />
         </ReactFlow>
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-3 text-xs pointer-events-none">
           <span className="rounded bg-gray-900/95 px-3 py-2 text-gray-300">○ Audio · □ CV · Drag a socket to connect</span>
