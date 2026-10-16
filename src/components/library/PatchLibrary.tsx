@@ -7,7 +7,7 @@ import PatchUploader from './PatchUploader';
 export default function PatchLibrary() {
   const [patches, setPatches] = useState<StoredPatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const setPatch = usePatchStore((state) => state.setPatch);
+  const requestPatch = usePatchStore((state) => state.requestPatch);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const activePatch = usePatchStore((state) => state.patch); 
 
@@ -32,7 +32,7 @@ export default function PatchLibrary() {
   const handleLoad = (stored: StoredPatch) => {
     try {
       const patch = parsePatch(stored.data);
-      setPatch(patch);
+      requestPatch(patch, null, stored.data);
     } catch (err) {
       console.error("Failed to parse stored patch", err);
       alert("Failed to load patch. It might be corrupted.");
